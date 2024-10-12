@@ -38,18 +38,6 @@ You can use the purl2repo library to get repository and release information for 
 from purl2repo import get_source_repo_and_release
 ```
 
-# Example for PyPI
-```json
-    pypi_purl = "pkg:pypi/requests@2.25.1"
-    result = get_source_repo_and_release(pypi_purl)
-    print(result)
-```
-
-# Example for npm
-npm_purl = "pkg:npm/lodash@4.17.21"
-result = get_source_repo_and_release(npm_purl)
-print(result)
-
 # Example for Cargo (Rust)
 cargo_purl = "pkg:cargo/rand@0.8.3"
 result = get_source_repo_and_release(cargo_purl)
