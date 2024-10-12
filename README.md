@@ -38,12 +38,7 @@ You can use the purl2repo library to get repository and release information for 
 from purl2repo import get_source_repo_and_release
 ```
 
-# Example for Cargo (Rust)
-cargo_purl = "pkg:cargo/rand@0.8.3"
-result = get_source_repo_and_release(cargo_purl)
-print(result)
-Output
-The get_source_repo_and_release function returns a dictionary with the following structure:
+# Example 
 
 ```python
 {
