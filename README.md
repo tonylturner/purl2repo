@@ -40,6 +40,10 @@ from purl2repo import get_source_repo_and_release
 
 ## Example 
 
+`pypi_purl = "pkg:pypi/requests@2.25.1"\
+result = get_source_repo_and_release(pypi_purl)\
+print(result)`
+
 ```python
 {
     "package_name": "requests",
