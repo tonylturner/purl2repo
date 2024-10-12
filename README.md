@@ -38,7 +38,7 @@ You can use the purl2repo library to get repository and release information for 
 from purl2repo import get_source_repo_and_release
 ```
 
-# Example 
+## Example 
 
 ```python
 {
