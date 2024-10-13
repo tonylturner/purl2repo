@@ -5,6 +5,7 @@ from .test_pypi_parser import TestPyPiParser
 from .test_npm_parser import TestNpmParser
 from .test_cargo_parser import TestCargoParser
 
+
 # Create a test suite that aggregates all test cases
 def suite():
     suite = unittest.TestSuite()
@@ -12,6 +13,7 @@ def suite():
     suite.addTest(unittest.makeSuite(TestNpmParser))
     suite.addTest(unittest.makeSuite(TestCargoParser))
     return suite
+
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner()

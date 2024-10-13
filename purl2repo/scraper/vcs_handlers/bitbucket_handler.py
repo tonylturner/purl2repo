@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 
+
 class BitbucketHandler:
     @staticmethod
     def extract_vcs_links(url):
@@ -10,12 +11,12 @@ class BitbucketHandler:
             if response.status_code != 200:
                 return []
 
-            soup = BeautifulSoup(response.text, 'html.parser')
+            soup = BeautifulSoup(response.text, "html.parser")
             links = []
 
-            for a_tag in soup.find_all('a', href=True):
-                href = a_tag['href'].lower()
-                if 'bitbucket.org' in href:
+            for a_tag in soup.find_all("a", href=True):
+                href = a_tag["href"].lower()
+                if "bitbucket.org" in href:
                     links.append(href)
 
             return links

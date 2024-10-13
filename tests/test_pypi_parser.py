@@ -2,6 +2,7 @@ import unittest
 from packageurl import PackageURL
 from purl2repo.pypi_parser import PyPiParser
 
+
 class TestPyPiParser(unittest.TestCase):
     def test_get_source_repo_and_release(self):
         purl_str = "pkg:pypi/requests@2.25.1"
@@ -10,17 +11,17 @@ class TestPyPiParser(unittest.TestCase):
         result = parser.get_source_repo_and_release()
 
         # Ensure the package name is correct
-        self.assertEqual(result['package_name'], 'requests')
-        
+        self.assertEqual(result["package_name"], "requests")
+
         # Check if github_repo is present and contains a valid GitHub link
-        if result['github_repo']:
-            self.assertIn('github.com', result['github_repo'])
+        if result["github_repo"]:
+            self.assertIn("github.com", result["github_repo"])
         else:
             # If not found, we expect github_repo to be None
-            self.assertIsNone(result['github_repo'])
+            self.assertIsNone(result["github_repo"])
 
         # Ensure the version is correct
-        self.assertEqual(result['specified_version'], '2.25.1')
+        self.assertEqual(result["specified_version"], "2.25.1")
 
     def test_pypi_package_not_found(self):
         purl_str = "pkg:pypi/unknown-package@1.0.0"
@@ -38,14 +39,15 @@ class TestPyPiParser(unittest.TestCase):
 
         # Even though Django 1.4 may not return GitHub directly in metadata,
         # it should fallback to the scraper and find the GitHub repo.
-        self.assertEqual(result['package_name'], 'django')
-        if result['github_repo']:
-            self.assertIn('github.com', result['github_repo'])
+        self.assertEqual(result["package_name"], "django")
+        if result["github_repo"]:
+            self.assertIn("github.com", result["github_repo"])
         else:
-            self.assertIsNone(result['github_repo'])
-        
-        # Ensure the version is correct
-        self.assertEqual(result['specified_version'], '1.4')
+            self.assertIsNone(result["github_repo"])
 
-if __name__ == '__main__':
+        # Ensure the version is correct
+        self.assertEqual(result["specified_version"], "1.4")
+
+
+if __name__ == "__main__":
     unittest.main()
