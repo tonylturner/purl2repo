@@ -3,7 +3,7 @@
 purl2repo is a Python library designed to translate Package URLs (purl) into GitHub repository URLs and release information. It supports multiple package managers, including PyPI, npm, and Cargo, and is designed to be easily extendable to other package managers.
 
 ## Features
-- Supports translating purl for PyPI, npm, and Cargo packages.
+- Supports translating purl for pypi, maven, npm, and cargo packages.
 - Retrieves GitHub repository information for a specific package and version.
 - Easily extensible to support additional package managers.
 
@@ -62,18 +62,10 @@ If the package or version cannot be found, a ValueError will be raised. Make sur
 - PyPI: Python Package Index
 - npm: Node.js package manager
 - Cargo: Rust package manager
+- Maven: Maven Central by Sonatype
 
 ## Extending the Library
 You can extend the library to support additional package managers by following the same pattern used for the supported managers (PyPI, npm, Cargo). Add a new parser class for the package manager and register it in the manager_registry.py file.
-
-Running Tests
-To run the tests, make sure you have unittest installed. Then, you can run all the tests using:
-
-```bash
-python -m unittest discover -s tests
-```
-
-This will automatically discover and run all test cases in the tests/ directory.
 
 License
 This project is licensed under the Apache 2.0 License. See the LICENSE file for details.
