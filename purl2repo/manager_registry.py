@@ -2,11 +2,13 @@ from packageurl import PackageURL
 from .pypi_parser import PyPiParser
 from .npm_parser import NpmParser
 from .cargo_parser import CargoParser
+from .maven_parser import MavenParser
 
 PARSER_REGISTRY = {
     "pypi": PyPiParser,
     "npm": NpmParser,
     "cargo": CargoParser,
+    "maven": MavenParser,
 }
 
 
