@@ -4,6 +4,9 @@
 metadata first. Direct-host and artifact-hub PURLs bypass inference because the
 PURL itself identifies the canonical repository.
 
+For the full upstream PURL type catalog and purl2repo's support policy, see
+[purls.md](purls.md).
+
 ## PyPI
 
 PyPI uses the JSON API. Versioned PURLs fetch the version-specific JSON endpoint;
