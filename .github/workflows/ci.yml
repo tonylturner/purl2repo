@@ -59,7 +59,7 @@ jobs:
       - name: Mypy
         run: mypy
       - name: Unit tests
-        run: pytest
+        run: pytest --cov=purl2repo --cov-report=term-missing --cov-fail-under=90
       - name: Build
         run: python -m build
       - name: Smoke test CLI

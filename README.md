@@ -175,13 +175,13 @@ python3.11 -m venv .venv
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
 .venv/bin/mypy
-.venv/bin/pytest
+.venv/bin/pytest --cov=purl2repo --cov-report=term-missing --cov-fail-under=90
 ```
 
 Live integration tests are separate:
 
 ```bash
-.venv/bin/pytest tests/integration -m integration --no-cov
+.venv/bin/pytest tests/integration -m integration
 ```
 
 See

@@ -12,7 +12,7 @@ python3.11 -m venv .venv
 Unit tests are deterministic and run without network:
 
 ```bash
-.venv/bin/pytest
+.venv/bin/pytest --cov=purl2repo --cov-report=term-missing --cov-fail-under=90
 ```
 
 After building, install the wheel into a fresh virtual environment before
@@ -32,6 +32,9 @@ Live tests are separate:
 ```bash
 .venv/bin/pytest tests/integration -m integration
 ```
+
+Integration runs intentionally do not enforce the unit-test coverage threshold.
+They are live service checks, not coverage-measurement runs.
 
 ## Fixtures
 

@@ -63,7 +63,7 @@ purl2repo = "purl2repo.cli:app"
 where = ["src"]
 
 [tool.pytest.ini_options]
-addopts = "--strict-markers --cov=purl2repo --cov-report=term-missing --cov-fail-under=90"
+addopts = "--strict-markers"
 testpaths = ["tests/unit"]
 markers = [
   "integration: live registry and host checks that may use network",

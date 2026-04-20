@@ -22,7 +22,7 @@
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
 .venv/bin/mypy
-.venv/bin/pytest
+.venv/bin/pytest --cov=purl2repo --cov-report=term-missing --cov-fail-under=90
 .venv/bin/python -m build
 .venv/bin/twine check dist/*
 tmpdir="$(mktemp -d)"

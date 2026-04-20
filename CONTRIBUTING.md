@@ -15,12 +15,14 @@ Use the repository `.venv` for Python commands.
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
 .venv/bin/mypy
-.venv/bin/pytest
+.venv/bin/pytest --cov=purl2repo --cov-report=term-missing --cov-fail-under=90
 .venv/bin/python -m build
 ```
 
 Normal unit tests must not use the network. Put live registry checks under
 `tests/integration` and mark them with `@pytest.mark.integration`.
+Run live checks separately with `.venv/bin/pytest tests/integration -m integration`;
+those checks do not enforce the unit-test coverage threshold.
 
 ## Adding An Ecosystem
 
