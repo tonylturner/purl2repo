@@ -1,7 +1,7 @@
 # purl2repo
 
 [![CI](https://github.com/tonylturner/purl2repo/actions/workflows/ci.yml/badge.svg)](https://github.com/tonylturner/purl2repo/actions/workflows/ci.yml)
-[![Integration](https://github.com/tonylturner/purl2repo/actions/workflows/integration.yml/badge.svg)](https://github.com/tonylturner/purl2repo/actions/workflows/integration.yml)
+[![Integration](https://github.com/tonylturner/purl2repo/actions/workflows/integration.yml/badge.svg?branch=main)](https://github.com/tonylturner/purl2repo/actions/workflows/integration.yml)
 [![Release](https://img.shields.io/badge/release-v2.0.1-blue.svg)](https://github.com/tonylturner/purl2repo/blob/main/docs/releases/v2.0.1.md)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://github.com/tonylturner/purl2repo/blob/main/pyproject.toml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/tonylturner/purl2repo/blob/main/LICENSE)
