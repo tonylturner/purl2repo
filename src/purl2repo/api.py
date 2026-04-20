@@ -44,6 +44,9 @@ def _resolver_from_kwargs(kwargs: dict[str, object]) -> Resolver:
         "strict",
         "no_network",
         "verify_release_links",
+        "validate_repositories",
+        "use_deps_dev_fallback",
+        "use_scraper_fallback",
         "user_agent",
     }
     unknown = set(kwargs) - allowed
@@ -57,6 +60,9 @@ def _resolver_from_kwargs(kwargs: dict[str, object]) -> Resolver:
     strict = kwargs.get("strict", False)
     no_network = kwargs.get("no_network", False)
     verify_release_links = kwargs.get("verify_release_links", False)
+    validate_repositories = kwargs.get("validate_repositories", True)
+    use_deps_dev_fallback = kwargs.get("use_deps_dev_fallback", True)
+    use_scraper_fallback = kwargs.get("use_scraper_fallback", True)
     user_agent = kwargs.get("user_agent", "purl2repo/2.x")
 
     if not isinstance(timeout, int | float):
@@ -71,6 +77,12 @@ def _resolver_from_kwargs(kwargs: dict[str, object]) -> Resolver:
         raise TypeError("no_network must be a bool")
     if not isinstance(verify_release_links, bool):
         raise TypeError("verify_release_links must be a bool")
+    if not isinstance(validate_repositories, bool):
+        raise TypeError("validate_repositories must be a bool")
+    if not isinstance(use_deps_dev_fallback, bool):
+        raise TypeError("use_deps_dev_fallback must be a bool")
+    if not isinstance(use_scraper_fallback, bool):
+        raise TypeError("use_scraper_fallback must be a bool")
     if not isinstance(user_agent, str):
         raise TypeError("user_agent must be a string")
 
@@ -81,6 +93,9 @@ def _resolver_from_kwargs(kwargs: dict[str, object]) -> Resolver:
         strict=strict,
         no_network=no_network,
         verify_release_links=verify_release_links,
+        validate_repositories=validate_repositories,
+        use_deps_dev_fallback=use_deps_dev_fallback,
+        use_scraper_fallback=use_scraper_fallback,
         user_agent=user_agent,
     )
 
@@ -96,6 +111,9 @@ class Resolver:
         strict: bool = False,
         no_network: bool = False,
         verify_release_links: bool = False,
+        validate_repositories: bool = True,
+        use_deps_dev_fallback: bool = True,
+        use_scraper_fallback: bool = True,
         user_agent: str = "purl2repo/2.x",
     ) -> None:
         self.settings = ResolverSettings(
@@ -105,6 +123,9 @@ class Resolver:
             strict=strict,
             no_network=no_network,
             verify_release_links=verify_release_links,
+            validate_repositories=validate_repositories,
+            use_deps_dev_fallback=use_deps_dev_fallback,
+            use_scraper_fallback=use_scraper_fallback,
             user_agent=user_agent,
         )
         self._engine = ResolutionEngine(self.settings)

@@ -5,7 +5,22 @@ Keep a Changelog and the project uses Semantic Versioning.
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Added
+
+- Resolver settings and CLI flags can now disable repository URL validation,
+  deps.dev fallback, and scraper fallback for faster bulk inventory workflows.
+
+### Changed
+
+- Maven parent POM SCM candidates are now scored separately from artifact-owned
+  SCM fields and capped below high confidence.
+- Scraped fallback candidates without package-specific repository path evidence
+  are now capped below the confidence threshold.
+
+### Fixed
+
+- Repository candidates with inconclusive URL validation are no longer allowed
+  to remain high confidence.
 
 ## [2.0.1] - 2026-04-20
 

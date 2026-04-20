@@ -70,3 +70,45 @@ def test_scoring_penalizes_bad_and_weak_candidates():
     assert candidates[-1].score == 0
     assert any("Malformed" in reason for reason in candidates[-1].reasons)
     assert any("organization root" in reason for reason in candidates[0].reasons)
+
+
+def test_maven_parent_scm_is_capped_below_high_confidence():
+    parsed = parse_purl("pkg:maven/com.google.j2objc/j2objc-annotations@1.1")
+    candidates = score_candidates(
+        [
+            RepositoryCandidate(
+                url="https://github.com/example/parent",
+                normalized_url="https://github.com/example/parent",
+                host="github.com",
+                repository_type="github",
+                source="pom_parent_scm",
+                score=0.0,
+                reasons=["Candidate from Maven parent scm.url"],
+            )
+        ],
+        parsed,
+    )
+
+    assert confidence_from_score(candidates[0].score) == "medium"
+    assert any("Inherited Maven parent SCM" in reason for reason in candidates[0].reasons)
+
+
+def test_scraped_candidates_without_specific_package_match_do_not_resolve():
+    parsed = parse_purl("pkg:maven/org.apache.tomcat/tomcat-jdbc@9.0.16")
+    candidates = score_candidates(
+        [
+            RepositoryCandidate(
+                url="https://github.com/apache/tomcat-jakartaee-migration",
+                normalized_url="https://github.com/apache/tomcat-jakartaee-migration",
+                host="github.com",
+                repository_type="github",
+                source="scrape",
+                score=0.0,
+                reasons=["Candidate from fallback scraper"],
+            )
+        ],
+        parsed,
+    )
+
+    assert confidence_from_score(candidates[0].score) == "none"
+    assert any("does not match package name" in reason for reason in candidates[0].reasons)

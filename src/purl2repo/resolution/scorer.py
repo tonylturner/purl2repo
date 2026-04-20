@@ -16,6 +16,7 @@ SOURCE_WEIGHTS = {
     "repository_field": 100.0,
     "registry_api": 100.0,
     "pom_scm": 100.0,
+    "pom_parent_scm": 55.0,
     "homepage": 85.0,
     "metadata_page": 45.0,
     "module_path": 95.0,
@@ -31,6 +32,7 @@ SOURCE_PRIORITY = {
     "repository_field": 0,
     "registry_api": 1,
     "pom_scm": 1,
+    "pom_parent_scm": 4,
     "project_urls_source": 2,
     "project_urls_repository": 2,
     "project_urls_code": 2,
@@ -63,6 +65,47 @@ def _package_name_matches_path(parsed: ParsedPurl, normalized_url: str) -> bool:
     path = urlsplit(normalized_url).path.lower()
     joined = parsed.name.lower().replace("_", "-")
     return joined in path or any(token in path for token in tokens)
+
+
+GENERIC_MODULE_TOKENS = {
+    "api",
+    "annotations",
+    "client",
+    "common",
+    "commons",
+    "core",
+    "ext",
+    "extension",
+    "extensions",
+    "framework",
+    "impl",
+    "java",
+    "javax",
+    "module",
+    "parent",
+    "project",
+    "server",
+    "service",
+    "services",
+    "support",
+    "test",
+    "testing",
+    "util",
+    "utils",
+}
+
+
+def _scraped_candidate_matches_package(parsed: ParsedPurl, normalized_url: str) -> bool:
+    path = urlsplit(normalized_url).path.lower()
+    joined = parsed.name.lower().replace("_", "-")
+    if joined in path:
+        return True
+    tokens = [
+        token for token in package_name_tokens(parsed.name) if token not in GENERIC_MODULE_TOKENS
+    ]
+    if not tokens:
+        return _package_name_matches_path(parsed, normalized_url)
+    return all(token in path for token in tokens)
 
 
 def score_candidate(candidate: RepositoryCandidate, parsed: ParsedPurl) -> RepositoryCandidate:
@@ -103,11 +146,21 @@ def score_candidate(candidate: RepositoryCandidate, parsed: ParsedPurl) -> Repos
         reasons.append("URL points to an organization root, not a repository")
 
     if candidate.source == "scrape":
-        score = min(score, 60.0)
-        reasons.append("Scraped candidate score capped below structured metadata")
+        if _scraped_candidate_matches_package(parsed, normalized):
+            score = min(score, 60.0)
+            reasons.append("Scraped candidate score capped below structured metadata")
+        else:
+            score = min(score, 34.0)
+            reasons.append(
+                "Scraped candidate path does not match package name; "
+                "capped below confidence threshold"
+            )
     if candidate.source.startswith("deps_dev_"):
         score = min(score, 75.0)
         reasons.append("deps.dev candidate score capped below first-party metadata")
+    if candidate.source == "pom_parent_scm":
+        score = min(score, 74.0)
+        reasons.append("Inherited Maven parent SCM candidate capped below high confidence")
 
     return replace(
         candidate,

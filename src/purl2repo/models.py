@@ -123,4 +123,7 @@ class ResolverSettings:
     strict: bool = False
     no_network: bool = False
     verify_release_links: bool = False
+    validate_repositories: bool = True
+    use_deps_dev_fallback: bool = True
+    use_scraper_fallback: bool = True
     user_agent: str = "purl2repo/2.x"

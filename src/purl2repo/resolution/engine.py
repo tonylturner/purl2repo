@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
+from dataclasses import replace
 from urllib.parse import urlsplit, urlunsplit
 
 from purl2repo.ecosystems.base import EcosystemResolver, Metadata
@@ -130,7 +131,11 @@ class ResolutionEngine:
             evidence,
         )
         structured_confidence = confidence_from_score(candidates[0].score if candidates else 0.0)
-        if structured_confidence == "none" and not self.settings.no_network:
+        if (
+            structured_confidence == "none"
+            and not self.settings.no_network
+            and self.settings.use_deps_dev_fallback
+        ):
             deps_candidates, deps_evidence, deps_warnings = fetch_deps_dev_candidates(
                 parsed,
                 self.client,
@@ -148,7 +153,12 @@ class ResolutionEngine:
                 structured_confidence = confidence_from_score(
                     candidates[0].score if candidates else 0.0
                 )
-        if structured_confidence == "none" and should_scrape_purl(parsed):
+        if (
+            structured_confidence == "none"
+            and not self.settings.no_network
+            and self.settings.use_scraper_fallback
+            and should_scrape_purl(parsed)
+        ):
             scrape_pages = [
                 *adapter.fallback_scrape_pages(parsed, metadata),
                 *default_fallback_pages(parsed, metadata),
@@ -626,9 +636,44 @@ class ResolutionEngine:
     ) -> list[RepositoryCandidate]:
         validated: list[RepositoryCandidate] = []
         for candidate in candidates:
-            if self._repository_url_is_valid(candidate.normalized_url, warnings, evidence):
-                validated.append(candidate)
+            validated_candidate = self._validate_repository_candidate(candidate, warnings, evidence)
+            if validated_candidate is not None:
+                validated.append(validated_candidate)
         return validated
+
+    def _validate_repository_candidate(
+        self,
+        candidate: RepositoryCandidate,
+        warnings: list[str],
+        evidence: list[str],
+    ) -> RepositoryCandidate | None:
+        if self.settings.no_network:
+            return candidate
+        if not self.settings.validate_repositories:
+            message = "Repository URL validation skipped by settings"
+            if message not in evidence:
+                evidence.append(message)
+            return candidate
+        try:
+            if self.client.url_exists(candidate.normalized_url, ttl_seconds=86400):
+                evidence.append(f"Validated repository URL: {candidate.normalized_url}")
+                return candidate
+        except MetadataFetchError:
+            if self.settings.strict:
+                raise
+            warnings.append(f"Could not validate repository URL: {candidate.normalized_url}")
+            return replace(
+                candidate,
+                score=min(candidate.score, 64.0),
+                reasons=[
+                    *candidate.reasons,
+                    "Repository URL validation was inconclusive; confidence capped below medium",
+                ],
+            )
+        warnings.append(
+            f"Repository URL did not validate and was discarded: {candidate.normalized_url}"
+        )
+        return None
 
     def _repository_url_is_valid(
         self,
@@ -637,6 +682,11 @@ class ResolutionEngine:
         evidence: list[str],
     ) -> bool:
         if self.settings.no_network:
+            return True
+        if not self.settings.validate_repositories:
+            message = "Repository URL validation skipped by settings"
+            if message not in evidence:
+                evidence.append(message)
             return True
         try:
             if self.client.url_exists(url, ttl_seconds=86400):

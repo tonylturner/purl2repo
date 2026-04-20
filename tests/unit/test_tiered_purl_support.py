@@ -173,6 +173,54 @@ def test_registry_404_repository_candidate_is_discarded(fake_http_factory):
     assert any("did not validate" in warning for warning in result.warnings)
 
 
+def test_registry_validation_errors_cap_confidence(fake_http_factory):
+    fake = fake_http_factory(
+        {
+            "https://pypi.org/pypi/demo/json": {
+                "info": {"project_urls": {"Source": "https://github.com/org/demo"}}
+            }
+        }
+    )
+
+    def fail_validation(url, ttl_seconds=900):
+        _ = url, ttl_seconds
+        raise MetadataFetchError("temporary validation failure")
+
+    fake.url_exists = fail_validation
+
+    result = resolve("pkg:pypi/demo")
+
+    assert result.repository_url == "https://github.com/org/demo"
+    assert result.confidence == "low"
+    assert any("Could not validate repository URL" in warning for warning in result.warnings)
+    assert any(
+        "validation was inconclusive" in reason
+        for reason in result.repository_candidates[0].reasons
+    )
+
+
+def test_repository_validation_can_be_disabled(fake_http_factory):
+    fake = fake_http_factory(
+        {
+            "https://pypi.org/pypi/demo/json": {
+                "info": {"project_urls": {"Source": "https://github.com/org/missing"}}
+            }
+        }
+    )
+
+    def fail_if_called(url, ttl_seconds=900):
+        _ = url, ttl_seconds
+        raise AssertionError("repository validation should be skipped")
+
+    fake.url_exists = fail_if_called
+
+    result = resolve("pkg:pypi/demo", validate_repositories=False)
+
+    assert result.repository_url == "https://github.com/org/missing"
+    assert result.confidence == "high"
+    assert "Repository URL validation skipped by settings" in result.evidence
+
+
 def test_generic_uses_vcs_url_before_other_url_qualifiers():
     purl = (
         "pkg:generic/example@1.0.0?"

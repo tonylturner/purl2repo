@@ -66,3 +66,9 @@ Repository validation is not a scoring boost. It is a validity check: if a
 candidate URL verifies as missing, it is removed from consideration. If
 validation cannot run because network is disabled, the resolver preserves the
 deterministic result and leaves validation to the caller.
+If validation is inconclusive because a host errors during lookup, the candidate
+is retained with a lower score so stale metadata can remain inspectable without
+being reported as high confidence.
+Bulk callers can also disable repository validation, deps.dev fallback, and
+scraper fallback through resolver settings. Those switches skip expensive stages
+but do not change the default quality-first behavior.

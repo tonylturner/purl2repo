@@ -12,7 +12,9 @@ from purl2repo import parse_purl, resolve, resolve_repository, resolve_release
 - `resolve(purl: str, **kwargs) -> ResolutionResult`
 
 Keyword arguments are the `Resolver` settings: `timeout`, `use_cache`,
-`cache_dir`, `strict`, `no_network`, `verify_release_links`, and `user_agent`.
+`cache_dir`, `strict`, `no_network`, `verify_release_links`,
+`validate_repositories`, `use_deps_dev_fallback`, `use_scraper_fallback`, and
+`user_agent`.
 
 ## Resolver
 
@@ -79,7 +81,9 @@ states raise explicit exceptions.
 
 Repository URL validation runs when network is available. Candidates that verify
 as missing are discarded before `canonical_repository` is selected. In
-`no_network=True`, validation is skipped.
+`no_network=True`, validation is skipped. Set `validate_repositories=False` for
+bulk inventory runs that need fewer host requests and can tolerate unverified
+repository URLs in the result.
 
 ## Fallback Scraping
 
@@ -89,6 +93,9 @@ package/project pages and metadata-provided homepage URLs. Scraped candidates ar
 returned as repository candidates with `source="scrape"` and reasons that include
 source page, extraction method, and score cap. Scraping is not a crawler and does
 not run for direct-host PURLs such as GitHub or Bitbucket.
+
+Set `use_deps_dev_fallback=False` or `use_scraper_fallback=False` to disable
+the expensive third-party and HTML fallback stages for bulk scans.
 
 ## Tiered PURL Behavior
 

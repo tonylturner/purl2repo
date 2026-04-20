@@ -48,6 +48,27 @@ VerifyReleaseOption = Annotated[
         help="Check inferred release URLs before returning them.",
     ),
 ]
+ValidateRepositoriesOption = Annotated[
+    bool,
+    typer.Option(
+        "--validate-repositories/--no-validate-repositories",
+        help="Check candidate repository URLs before selecting them.",
+    ),
+]
+DepsDevFallbackOption = Annotated[
+    bool,
+    typer.Option(
+        "--deps-dev-fallback/--no-deps-dev-fallback",
+        help="Use deps.dev as a third-party fallback when first-party metadata has no repo.",
+    ),
+]
+ScraperFallbackOption = Annotated[
+    bool,
+    typer.Option(
+        "--scraper-fallback/--no-scraper-fallback",
+        help="Use bounded HTML scraping when structured and deps.dev fallbacks have no repo.",
+    ),
+]
 
 
 def _settings(
@@ -57,6 +78,9 @@ def _settings(
     strict: bool,
     no_network: bool,
     verify_release_links: bool,
+    validate_repositories: bool,
+    use_deps_dev_fallback: bool,
+    use_scraper_fallback: bool,
 ) -> ResolverSettings:
     return ResolverSettings(
         timeout=timeout,
@@ -65,6 +89,9 @@ def _settings(
         strict=strict,
         no_network=no_network,
         verify_release_links=verify_release_links,
+        validate_repositories=validate_repositories,
+        use_deps_dev_fallback=use_deps_dev_fallback,
+        use_scraper_fallback=use_scraper_fallback,
     )
 
 
@@ -76,6 +103,9 @@ def _resolver(settings: ResolverSettings) -> api.Resolver:
         strict=settings.strict,
         no_network=settings.no_network,
         verify_release_links=settings.verify_release_links,
+        validate_repositories=settings.validate_repositories,
+        use_deps_dev_fallback=settings.use_deps_dev_fallback,
+        use_scraper_fallback=settings.use_scraper_fallback,
         user_agent=settings.user_agent,
     )
 
@@ -167,11 +197,24 @@ def resolve(
     trace: TraceOption = False,
     no_network: NoNetworkOption = False,
     verify_release_links: VerifyReleaseOption = False,
+    validate_repositories: ValidateRepositoriesOption = True,
+    deps_dev_fallback: DepsDevFallbackOption = True,
+    scraper_fallback: ScraperFallbackOption = True,
 ) -> None:
     """Resolve repository and release information."""
 
     _configure_logging(verbose)
-    settings = _settings(timeout, no_cache, cache_dir, strict, no_network, verify_release_links)
+    settings = _settings(
+        timeout,
+        no_cache,
+        cache_dir,
+        strict,
+        no_network,
+        verify_release_links,
+        validate_repositories,
+        deps_dev_fallback,
+        scraper_fallback,
+    )
     try:
         with _resolver(settings) as resolver:
             result = resolver.resolve(purl)
@@ -194,11 +237,24 @@ def repo(
     trace: TraceOption = False,
     no_network: NoNetworkOption = False,
     verify_release_links: VerifyReleaseOption = False,
+    validate_repositories: ValidateRepositoriesOption = True,
+    deps_dev_fallback: DepsDevFallbackOption = True,
+    scraper_fallback: ScraperFallbackOption = True,
 ) -> None:
     """Resolve the best repository only."""
 
     _configure_logging(verbose)
-    settings = _settings(timeout, no_cache, cache_dir, strict, no_network, verify_release_links)
+    settings = _settings(
+        timeout,
+        no_cache,
+        cache_dir,
+        strict,
+        no_network,
+        verify_release_links,
+        validate_repositories,
+        deps_dev_fallback,
+        scraper_fallback,
+    )
     try:
         with _resolver(settings) as resolver:
             result = resolver.resolve_repository(purl)
@@ -221,11 +277,24 @@ def release(
     trace: TraceOption = False,
     no_network: NoNetworkOption = False,
     verify_release_links: VerifyReleaseOption = False,
+    validate_repositories: ValidateRepositoriesOption = True,
+    deps_dev_fallback: DepsDevFallbackOption = True,
+    scraper_fallback: ScraperFallbackOption = True,
 ) -> None:
     """Resolve a version-specific release or source link."""
 
     _configure_logging(verbose)
-    settings = _settings(timeout, no_cache, cache_dir, strict, no_network, verify_release_links)
+    settings = _settings(
+        timeout,
+        no_cache,
+        cache_dir,
+        strict,
+        no_network,
+        verify_release_links,
+        validate_repositories,
+        deps_dev_fallback,
+        scraper_fallback,
+    )
     try:
         with _resolver(settings) as resolver:
             result = resolver.resolve_release(purl)

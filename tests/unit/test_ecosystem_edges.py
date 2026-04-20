@@ -145,6 +145,7 @@ def test_maven_fetches_parent_pom_when_child_has_no_scm():
     candidates = MavenResolver().extract_candidates(parsed, metadata)
 
     assert candidates[0].normalized_url == "https://github.com/example/parent"
+    assert candidates[0].source == "pom_parent_scm"
 
 
 def test_maven_empty_namespace_and_missing_xml_children():
@@ -185,12 +186,14 @@ def test_maven_branch_edges():
         },
     )
     assert candidates[0].normalized_url == "https://github.com/example/parent"
+    assert candidates[0].source == "pom_parent_scm"
 
     dict_parent_candidates = resolver.extract_candidates(
         parsed,
         {"pom": {}, "parent_poms": {"scm": {"url": "https://github.com/example/dict-parent"}}},
     )
     assert dict_parent_candidates[0].normalized_url == "https://github.com/example/dict-parent"
+    assert dict_parent_candidates[0].source == "pom_parent_scm"
 
 
 def test_maven_invalid_xml_raises():

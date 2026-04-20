@@ -26,6 +26,12 @@ def test_top_level_kwargs_validation():
         resolve_repository("pkg:pypi/requests", no_network="yes")
     with pytest.raises(TypeError, match="verify_release_links"):
         resolve_repository("pkg:pypi/requests", verify_release_links="yes")
+    with pytest.raises(TypeError, match="validate_repositories"):
+        resolve_repository("pkg:pypi/requests", validate_repositories="yes")
+    with pytest.raises(TypeError, match="use_deps_dev_fallback"):
+        resolve_repository("pkg:pypi/requests", use_deps_dev_fallback="yes")
+    with pytest.raises(TypeError, match="use_scraper_fallback"):
+        resolve_repository("pkg:pypi/requests", use_scraper_fallback="yes")
     with pytest.raises(TypeError, match="user_agent"):
         resolve_repository("pkg:pypi/requests", user_agent=1)
 

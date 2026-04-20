@@ -172,6 +172,39 @@ def test_engine_uses_deps_dev_before_scraping(fake_http_factory):
     assert any("deps.dev" in item for item in result.evidence)
 
 
+def test_deps_dev_fallback_can_be_disabled(fake_http_factory):
+    fake_http_factory(
+        json_payloads={
+            "https://pypi.org/pypi/demo/1.0.0/json": {"info": {}},
+        }
+    )
+    engine = ResolutionEngine(
+        ResolverSettings(use_deps_dev_fallback=False, use_scraper_fallback=False)
+    )
+
+    result = engine.resolve("pkg:pypi/demo@1.0.0")
+
+    assert result.repository_url is None
+    assert "deps-dev" not in result.metadata_sources
+
+
+def test_scraper_fallback_can_be_disabled(fake_http_factory):
+    fake_http_factory(
+        json_payloads={"https://pypi.org/pypi/demo/json": {"info": {}}},
+        text_payloads={
+            "https://pypi.org/project/demo/": '<a href="https://github.com/org/demo">Source</a>'
+        },
+    )
+    engine = ResolutionEngine(
+        ResolverSettings(use_deps_dev_fallback=False, use_scraper_fallback=False)
+    )
+
+    result = engine.resolve("pkg:pypi/demo")
+
+    assert result.repository_url is None
+    assert all(candidate.source != "scrape" for candidate in result.repository_candidates)
+
+
 def test_docs_homepage_does_not_block_fallback_scraping():
     engine = ResolutionEngine(ResolverSettings())
     engine.client = FakeHttpClient(

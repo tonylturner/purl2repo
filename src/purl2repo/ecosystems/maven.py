@@ -54,12 +54,16 @@ class MavenResolver(EcosystemResolver):
                     continue
                 parent_scm = parent_pom.get("scm")
                 if isinstance(parent_scm, dict):
-                    candidates.extend(_scm_candidates(parent_scm, "Maven parent"))
+                    candidates.extend(
+                        _scm_candidates(parent_scm, "Maven parent", source="pom_parent_scm")
+                    )
         elif isinstance(parent_poms, dict):
             parent_pom = parent_poms
             parent_scm = parent_pom.get("scm")
             if isinstance(parent_scm, dict):
-                candidates.extend(_scm_candidates(parent_scm, "Maven parent"))
+                candidates.extend(
+                    _scm_candidates(parent_scm, "Maven parent", source="pom_parent_scm")
+                )
         homepage = pom.get("url")
         if isinstance(homepage, str) and not is_docs_like(homepage) and is_repo_like_url(homepage):
             candidates.append(
@@ -178,10 +182,12 @@ def _scm_has_value(pom: Metadata) -> bool:
     return any(isinstance(scm.get(key), str) and scm.get(key) for key in scm)
 
 
-def _scm_candidates(scm: dict[str, Any], label: str) -> list[RepositoryCandidate | None]:
+def _scm_candidates(
+    scm: dict[str, Any], label: str, *, source: str = "pom_scm"
+) -> list[RepositoryCandidate | None]:
     candidates: list[RepositoryCandidate | None] = []
     for key in ("url", "connection", "developerConnection"):
         value = scm.get(key)
         if isinstance(value, str):
-            candidates.append(make_candidate(value, "pom_scm", f"Candidate from {label} scm.{key}"))
+            candidates.append(make_candidate(value, source, f"Candidate from {label} scm.{key}"))
     return candidates
