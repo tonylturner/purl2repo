@@ -6,6 +6,33 @@ on:
     branches: [main]
 
 jobs:
+  security:
+    name: Trivy vulnerability scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Generate dependency manifest for Trivy
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          mkdir -p .trivy
+          python -m pip freeze --all > .trivy/requirements.txt
+      - name: Trivy Python dependency vulnerability scan
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          scan-type: fs
+          scan-ref: .trivy
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+          version: v0.69.3
+          skip-dirs: .git,.venv,dist,build
+
   test:
     name: Python 3.14
     runs-on: ubuntu-latest

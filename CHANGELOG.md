@@ -27,6 +27,10 @@ Keep a Changelog and the project uses Semantic Versioning.
 - Optional release-link verification with cached host checks.
 - Strict fallback HTML scraping for repository recovery when structured metadata
   does not yield a usable candidate.
+- Trivy dependency vulnerability scanning in CI for high and critical package
+  vulnerabilities.
+- Source distribution manifest that includes the changelog, docs, and project
+  support files in release artifacts.
 - Typer CLI with parse, resolve, repo, release, supports, and version commands.
 - Unit, fixture, and separated live integration test structure.
 - PyPI-ready `pyproject.toml`, CI, TestPyPI, and PyPI workflows.
