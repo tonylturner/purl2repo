@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/tonylturner/purl2repo/actions/workflows/ci.yml/badge.svg)](https://github.com/tonylturner/purl2repo/actions/workflows/ci.yml)
 [![Integration](https://github.com/tonylturner/purl2repo/actions/workflows/integration.yml/badge.svg)](https://github.com/tonylturner/purl2repo/actions/workflows/integration.yml)
-[![Release](https://img.shields.io/badge/release-v2.0.0-blue.svg)](docs/releases/v2.0.0.md)
-[![Python](https://img.shields.io/badge/python-3.14-blue.svg)](pyproject.toml)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/badge/release-v2.0.0-blue.svg)](https://github.com/tonylturner/purl2repo/blob/main/docs/releases/v2.0.0.md)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://github.com/tonylturner/purl2repo/blob/main/pyproject.toml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/tonylturner/purl2repo/blob/main/LICENSE)
 [![Typed](https://img.shields.io/badge/typed-py.typed-blue.svg)](https://typing.python.org/en/latest/spec/distributing.html)
 [![Trivy](https://img.shields.io/badge/trivy-no_high_or_critical_vulns-brightgreen.svg)](https://github.com/tonylturner/purl2repo/actions/workflows/ci.yml)
 
@@ -43,8 +43,9 @@ Direct or explicit repository resolution:
 - `pkg:huggingface`
 - `pkg:mlflow`
 
-See [docs/ecosystems.md](docs/ecosystems.md) for exact behavior by ecosystem and
-PURL type.
+See
+[docs/ecosystems.md](https://github.com/tonylturner/purl2repo/blob/main/docs/ecosystems.md)
+for exact behavior by ecosystem and PURL type.
 
 ## Installation
 
@@ -52,7 +53,7 @@ PURL type.
 pip install purl2repo
 ```
 
-Requires Python 3.14 or newer.
+Requires Python 3.11 or newer.
 
 ## Quickstart
 
@@ -103,7 +104,8 @@ purl2repo resolve pkg:pypi/requests@2.31.0 --json --pretty
 purl2repo resolve pkg:npm/react@18.2.0 --trace
 ```
 
-See [docs/cli.md](docs/cli.md) for all commands, flags, and exit codes.
+See [docs/cli.md](https://github.com/tonylturner/purl2repo/blob/main/docs/cli.md)
+for all commands, flags, and exit codes.
 
 ## Output
 
@@ -119,8 +121,11 @@ The main fields are:
 - `version_reference`: verified or inferred version-specific link when available.
 - `confidence`, `evidence`, `warnings`, and `repository_candidates`.
 
-See [docs/api.md](docs/api.md), [docs/scoring.md](docs/scoring.md), and
-[docs/architecture.md](docs/architecture.md) for the full contract.
+See [docs/api.md](https://github.com/tonylturner/purl2repo/blob/main/docs/api.md),
+[docs/scoring.md](https://github.com/tonylturner/purl2repo/blob/main/docs/scoring.md),
+and
+[docs/architecture.md](https://github.com/tonylturner/purl2repo/blob/main/docs/architecture.md)
+for the full contract.
 
 ## Examples
 
@@ -145,20 +150,20 @@ purl2repo resolve pkg:pypi/requests
 
 ## Documentation
 
-- [Architecture](docs/architecture.md)
-- [API](docs/api.md)
-- [CLI](docs/cli.md)
-- [Ecosystems](docs/ecosystems.md)
-- [PURL support](docs/purls.md)
-- [Scoring](docs/scoring.md)
-- [Migration from v1](docs/migration.md)
-- [Development](docs/development.md)
-- [Release process](docs/release-process.md)
+- [Architecture](https://github.com/tonylturner/purl2repo/blob/main/docs/architecture.md)
+- [API](https://github.com/tonylturner/purl2repo/blob/main/docs/api.md)
+- [CLI](https://github.com/tonylturner/purl2repo/blob/main/docs/cli.md)
+- [Ecosystems](https://github.com/tonylturner/purl2repo/blob/main/docs/ecosystems.md)
+- [PURL support](https://github.com/tonylturner/purl2repo/blob/main/docs/purls.md)
+- [Scoring](https://github.com/tonylturner/purl2repo/blob/main/docs/scoring.md)
+- [Migration from v1](https://github.com/tonylturner/purl2repo/blob/main/docs/migration.md)
+- [Development](https://github.com/tonylturner/purl2repo/blob/main/docs/development.md)
+- [Release process](https://github.com/tonylturner/purl2repo/blob/main/docs/release-process.md)
 
 ## Development
 
 ```bash
-python3.14 -m venv .venv
+python3.11 -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
@@ -172,9 +177,13 @@ Live integration tests are separate:
 .venv/bin/pytest tests/integration -m integration --no-cov
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and
-[docs/development.md](docs/development.md) for contributor guidance.
+See
+[CONTRIBUTING.md](https://github.com/tonylturner/purl2repo/blob/main/CONTRIBUTING.md)
+and
+[docs/development.md](https://github.com/tonylturner/purl2repo/blob/main/docs/development.md)
+for contributor guidance.
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE).
+Apache-2.0. See
+[LICENSE](https://github.com/tonylturner/purl2repo/blob/main/LICENSE).

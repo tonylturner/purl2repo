@@ -31,7 +31,7 @@ class ResponseCache:
             return None
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
-        except OSError, json.JSONDecodeError:
+        except (OSError, json.JSONDecodeError):
             return None
         if now - float(payload.get("stored_at", 0)) > ttl_seconds:
             return None

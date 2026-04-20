@@ -3,7 +3,7 @@
 ## Setup
 
 ```bash
-python3.14 -m venv .venv
+python3.11 -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"
 ```
 
@@ -20,8 +20,9 @@ release:
 
 ```bash
 .venv/bin/python -m build
+.venv/bin/twine check dist/*
 tmpdir="$(mktemp -d)"
-python3.14 -m venv "$tmpdir/venv"
+python3.11 -m venv "$tmpdir/venv"
 "$tmpdir/venv/bin/python" -m pip install dist/purl2repo-2.0.0-py3-none-any.whl
 "$tmpdir/venv/bin/purl2repo" parse pkg:pypi/requests
 ```

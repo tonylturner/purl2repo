@@ -37,7 +37,9 @@ Keep a Changelog and the project uses Semantic Versioning.
 
 ### Changed
 
-- Migrated to a `src/` layout and Python 3.14 package metadata.
+- Migrated to a `src/` layout and Python 3.11+ package metadata.
+- Expanded runtime support from Python 3.14-only to Python 3.11 and newer.
+- Changed runtime version reporting to derive from installed package metadata.
 - Replaced ad hoc return dictionaries with stable dataclass contracts.
 - Expanded the repository model beyond Git-style source repositories.
 - Reworked resolution into parse, fetch, extract, normalize, score, select, and

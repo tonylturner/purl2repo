@@ -7,7 +7,7 @@ name = "purl2repo"
 version = "2.0.0"
 description = "Resolve Package URLs to canonical source, VCS, registry, and artifact hub repositories."
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 license = "Apache-2.0"
 authors = [
   { name = "Tony Turner" }
@@ -17,6 +17,9 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
   "Typing :: Typed",
   "Topic :: Software Development :: Libraries :: Python Modules",
@@ -36,6 +39,7 @@ dev = [
   "pytest-cov>=7.0",
   "pytest-httpx>=0.36",
   "ruff>=0.14",
+  "twine>=6.2",
 ]
 test = [
   "pytest>=9.0",
@@ -84,7 +88,7 @@ exclude_also = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py314"
+target-version = "py311"
 src = ["src", "tests", "scripts"]
 
 [tool.ruff.lint]
@@ -102,7 +106,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.11"
 strict = true
 files = ["src/purl2repo", "scripts"]
 warn_unused_configs = true
