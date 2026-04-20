@@ -1,0 +1,17 @@
+{
+  "name": "react",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/facebook/react.git"
+  },
+  "homepage": "https://react.dev",
+  "versions": {
+    "18.2.0": {
+      "repository": {
+        "type": "git",
+        "url": "git+https://github.com/facebook/react.git"
+      },
+      "homepage": "https://react.dev"
+    }
+  }
+}

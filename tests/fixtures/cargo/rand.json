@@ -1,0 +1,10 @@
+{
+  "crate": {
+    "id": "rand",
+    "repository": "https://github.com/rust-random/rand",
+    "homepage": "https://docs.rs/rand"
+  },
+  "version": {
+    "num": "0.8.5"
+  }
+}

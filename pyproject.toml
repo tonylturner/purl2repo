@@ -1,0 +1,108 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "purl2repo"
+version = "2.0.0"
+description = "Resolve Package URLs to canonical source repositories and version-specific release links."
+readme = "README.md"
+requires-python = ">=3.14"
+license = "Apache-2.0"
+authors = [
+  { name = "Tony Turner" }
+]
+keywords = ["purl", "package-url", "repository", "supply-chain", "metadata"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.14",
+  "Typing :: Typed",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Software Development :: Version Control",
+]
+dependencies = [
+  "httpx>=0.28",
+  "typer>=0.20",
+]
+
+[project.optional-dependencies]
+dev = [
+  "build>=1.3",
+  "mypy>=1.19",
+  "pre-commit>=4.5",
+  "pytest>=9.0",
+  "pytest-cov>=7.0",
+  "pytest-httpx>=0.36",
+  "ruff>=0.14",
+]
+test = [
+  "pytest>=9.0",
+  "pytest-cov>=7.0",
+  "pytest-httpx>=0.36",
+]
+docs = [
+  "mkdocs-material>=9.7",
+]
+
+[project.urls]
+Homepage = "https://github.com/tonylturner/purl2repo"
+Repository = "https://github.com/tonylturner/purl2repo"
+Issues = "https://github.com/tonylturner/purl2repo/issues"
+Changelog = "https://github.com/tonylturner/purl2repo/blob/main/CHANGELOG.md"
+
+[project.scripts]
+purl2repo = "purl2repo.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --cov=purl2repo --cov-report=term-missing --cov-fail-under=90"
+testpaths = ["tests/unit"]
+markers = [
+  "integration: live registry and host checks that may use network",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src/purl2repo"]
+omit = [
+  "src/purl2repo/version.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "if __name__ == .__main__.:",
+  "raise NotImplementedError",
+  "@abstractmethod",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF", "ANN"]
+ignore = [
+  "ANN401",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN"]
+"scripts/**" = ["ANN"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+files = ["src/purl2repo", "scripts"]
+warn_unused_configs = true

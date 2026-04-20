@@ -1,0 +1,8 @@
+<metadata>
+  <groupId>org.apache.logging.log4j</groupId>
+  <artifactId>log4j-core</artifactId>
+  <versioning>
+    <latest>2.22.1</latest>
+    <release>2.22.1</release>
+  </versioning>
+</metadata>
