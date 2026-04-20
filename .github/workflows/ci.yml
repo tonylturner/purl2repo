@@ -20,18 +20,23 @@ jobs:
           python -m pip install -e ".[dev]"
           mkdir -p .trivy
           python -m pip freeze --all > .trivy/requirements.txt
+      - name: Install pinned Trivy CLI
+        run: |
+          curl -fsSL \
+            -o /tmp/trivy.tar.gz \
+            https://github.com/aquasecurity/trivy/releases/download/v0.69.3/trivy_0.69.3_Linux-64bit.tar.gz
+          echo "1816b632dfe529869c740c0913e36bd1629cb7688bd5634f4a858c1d57c88b75  /tmp/trivy.tar.gz" | sha256sum -c -
+          mkdir -p /tmp/trivy-bin
+          tar -xzf /tmp/trivy.tar.gz -C /tmp/trivy-bin trivy
+          /tmp/trivy-bin/trivy --version
       - name: Trivy Python dependency vulnerability scan
-        uses: aquasecurity/trivy-action@0.35.0
-        with:
-          scan-type: fs
-          scan-ref: .trivy
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
-          format: table
-          version: v0.69.3
-          skip-dirs: .git,.venv,dist,build
+        run: |
+          /tmp/trivy-bin/trivy fs \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            .trivy
 
   test:
     name: Python 3.14

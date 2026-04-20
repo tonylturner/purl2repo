@@ -2,10 +2,11 @@
 
 [![CI](https://github.com/tonylturner/purl2repo/actions/workflows/ci.yml/badge.svg)](https://github.com/tonylturner/purl2repo/actions/workflows/ci.yml)
 [![Integration](https://github.com/tonylturner/purl2repo/actions/workflows/integration.yml/badge.svg)](https://github.com/tonylturner/purl2repo/actions/workflows/integration.yml)
-[![PyPI](https://img.shields.io/pypi/v/purl2repo.svg)](https://pypi.org/project/purl2repo/)
-[![Python](https://img.shields.io/pypi/pyversions/purl2repo.svg)](https://pypi.org/project/purl2repo/)
-[![License](https://img.shields.io/pypi/l/purl2repo.svg)](LICENSE)
+[![Release](https://img.shields.io/badge/release-v2.0.0-blue.svg)](docs/releases/v2.0.0.md)
+[![Python](https://img.shields.io/badge/python-3.14-blue.svg)](pyproject.toml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Typed](https://img.shields.io/badge/typed-py.typed-blue.svg)](https://typing.python.org/en/latest/spec/distributing.html)
+[![Trivy](https://img.shields.io/badge/trivy-no_high_or_critical_vulns-brightgreen.svg)](https://github.com/tonylturner/purl2repo/actions/workflows/ci.yml)
 
 `purl2repo` resolves Package URLs (PURLs) to canonical repositories and optional
 version references. It is built for automation that needs a clear answer plus
