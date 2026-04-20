@@ -1,5 +1,9 @@
 # Ecosystems
 
+`purl2repo` uses tiered PURL support. Registry and module ecosystems use native
+metadata first. Direct-host and artifact-hub PURLs bypass inference because the
+PURL itself identifies the canonical repository.
+
 ## PyPI
 
 PyPI uses the JSON API. Versioned PURLs fetch the version-specific JSON endpoint;
@@ -41,3 +45,57 @@ the original PURL did not request a version.
 
 If POM SCM metadata does not produce a usable repository, fallback scraping may
 inspect the Maven Central artifact page and the POM project URL.
+
+## NuGet
+
+NuGet uses the registration API. The resolver prefers repository information in
+catalog entries, then repo-like project URLs. Versioned NuGet PURLs return a
+NuGet package page as the version reference:
+`https://www.nuget.org/packages/{name}/{version}`.
+
+If registration metadata does not produce a usable repository, fallback scraping
+may inspect the NuGet package page and metadata-provided project URLs.
+
+## Go Modules
+
+Go modules use the Go module proxy for metadata lookup. Repository inference is
+based on the module path when it clearly encodes a host-backed repository, such
+as `pkg:golang/github.com/gin-gonic/gin@v1.10.0`.
+
+The resolver does not crawl arbitrary vanity import domains. Unknown Go module
+paths may therefore return no repository unless the module path itself is
+repository-like.
+
+## Direct Repository PURLs
+
+`pkg:github/org/repo@tag` and `pkg:bitbucket/org/repo@tag` resolve directly to
+their canonical web repository URLs with high confidence. They do not use
+registry inference or fallback scraping.
+
+## Generic PURLs
+
+`pkg:generic` uses explicit qualifiers in priority order:
+
+1. `vcs_url`
+2. `repository_url`
+3. `download_url`
+
+`vcs_url` and `repository_url` produce `repository_kind="vcs"`. `download_url`
+produces `repository_kind="generic"` and is not treated as a canonical source
+repository.
+
+## Artifact Hubs
+
+`pkg:huggingface/{namespace}/{model}@{revision}` resolves to
+`https://huggingface.co/{namespace}/{model}` with
+`repository_kind="artifact_hub"`. Hugging Face is the canonical repository for
+these artifacts; the resolver does not chase GitHub upstream links.
+
+Revision links are conservative. The resolver returns
+`https://huggingface.co/{namespace}/{model}/tree/{revision}` only when that URL
+can be verified. If verification fails or network is disabled, the repository
+still resolves with high confidence and `version_reference` remains `null`.
+
+`pkg:mlflow` is supported when the PURL supplies `registry_url` or
+`tracking_uri`. Without one of those qualifiers, the resolver returns a warning
+or raises in strict mode because MLflow has no single public canonical registry.

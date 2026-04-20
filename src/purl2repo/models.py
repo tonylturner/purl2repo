@@ -51,6 +51,22 @@ class ScrapedCandidate:
 
 
 @dataclass(frozen=True)
+class RepositoryRef:
+    url: str
+    kind: str
+    platform: str | None
+    host: str | None
+    namespace: str | None
+    name: str | None
+    is_canonical: bool
+    confidence: str
+    reasons: list[str]
+
+    def to_dict(self) -> JsonDict:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
 class ReleaseLink:
     url: str
     kind: str
@@ -66,8 +82,11 @@ class ResolutionResult:
     purl: ParsedPurl
     repository_url: str | None
     repository_type: str | None
+    repository_kind: str | None
     repository_candidates: list[RepositoryCandidate]
+    canonical_repository: RepositoryRef | None
     release_link: ReleaseLink | None
+    version_reference: ReleaseLink | None
     confidence: str
     evidence: list[str]
     warnings: list[str]
@@ -78,10 +97,17 @@ class ResolutionResult:
             "purl": self.purl.to_dict(),
             "repository_url": self.repository_url,
             "repository_type": self.repository_type,
+            "repository_kind": self.repository_kind,
             "repository_candidates": [
                 candidate.to_dict() for candidate in self.repository_candidates
             ],
+            "canonical_repository": (
+                self.canonical_repository.to_dict() if self.canonical_repository else None
+            ),
             "release_link": self.release_link.to_dict() if self.release_link else None,
+            "version_reference": (
+                self.version_reference.to_dict() if self.version_reference else None
+            ),
             "confidence": self.confidence,
             "evidence": list(self.evidence),
             "warnings": list(self.warnings),

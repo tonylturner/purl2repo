@@ -39,9 +39,14 @@ metadata fields used by adapters.
 
 ## Adding Ecosystems Or Hosts
 
-Add one adapter, register it in `resolution/engine.py`, update tests, and update
-the docs. Avoid changes to the public model contract unless preparing a major
-version.
+For Tier A registry or module ecosystems, add one adapter, register it in
+`resolution/engine.py`, update tests, and update the docs. Avoid changes to the
+public model contract unless preparing a major version.
+
+For direct-host, generic, or artifact-hub PURL types, update the routing logic in
+`ResolutionEngine` instead of forcing the type through an ecosystem adapter.
+These types should produce a `RepositoryRef` directly when the PURL already
+contains the canonical repository identity.
 
 For ecosystem adapters, expose fallback scraping targets with
 `fallback_scrape_pages()` only when the pages are package/project pages or URLs

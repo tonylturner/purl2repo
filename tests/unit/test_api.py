@@ -50,7 +50,9 @@ def test_verify_release_links_warns_when_unverified(fake_http_factory):
             "https://pypi.org/pypi/requests/2.31.0/json": load_json("pypi/requests.json"),
         }
     )
-    fake.url_exists = lambda url, ttl_seconds=900: False
+    fake.url_exists = lambda url, ttl_seconds=900: (
+        "/releases/" not in url and "/tags/" not in url and "/tree/" not in url
+    )
 
     with Resolver(verify_release_links=True) as resolver:
         result = resolver.resolve("pkg:pypi/requests@2.31.0")

@@ -16,20 +16,27 @@
 ## Data Flow
 
 1. Parse and validate the PURL.
-2. Select an ecosystem adapter from the PURL type.
-3. Fetch structured registry metadata.
-4. Extract repository candidates.
-5. Normalize repository URLs.
-6. Score structured candidates and sort them deterministically.
-7. If no usable structured candidate exists, run the bounded fallback scraper on
+2. Route direct-host, artifact-hub, and generic PURL types before ecosystem
+   inference.
+3. Select an ecosystem adapter from the PURL type when metadata lookup is needed.
+4. Fetch structured registry or module metadata.
+5. Extract repository candidates.
+6. Normalize repository URLs.
+7. Score structured candidates and sort them deterministically.
+8. Validate candidate repository URLs when network is available and discard
+   candidates that verify as missing.
+9. If no usable structured candidate exists, run the bounded fallback scraper on
    package/project pages and metadata-provided homepage URLs.
-8. Merge scraped candidates back into the candidate set with lower capped scores.
-9. Select the best candidate if confidence is sufficient.
-10. If a version exists, ask the host adapter for a conservative release link.
+10. Merge scraped candidates back into the candidate set with lower capped
+   scores and validate the merged repository URLs.
+11. Select the best candidate if confidence is sufficient and build a
+   `RepositoryRef`.
+12. If a version exists, ask the host adapter or ecosystem adapter for a
+   conservative version reference.
    When `verify_release_links=True`, candidate release, tag, and source URLs are
    checked with cached host requests before one is returned.
-11. Return a `ResolutionResult` with evidence, warnings, metadata sources, and all
-   candidates.
+13. Return a `ResolutionResult` with `canonical_repository`, evidence, warnings,
+   metadata sources, and all candidates.
 
 Adapters are intentionally narrow. Adding an ecosystem should not require
 changing parser, scoring, CLI, or serialization code beyond adapter registration
@@ -40,3 +47,13 @@ explicitly allowed pages per resolution and does not run for direct repository
 PURL types such as GitHub or Bitbucket. Hugging Face PURLs are also excluded from
 upstream-source scraping because Hugging Face is treated as canonical for those
 artifacts.
+
+The repository model is intentionally broader than Git. A resolved repository can
+be source code, an artifact hub, a VCS URL, a registry reference, or a generic
+download URL. This prevents GitHub-centric assumptions from leaking into callers
+that handle Hugging Face, MLflow, or generic package references.
+
+Repository validation is not a scoring boost. It is a validity check: if a
+candidate URL verifies as missing, it is removed from consideration. If
+validation cannot run because network is disabled, the resolver preserves the
+deterministic result and leaves validation to the caller.

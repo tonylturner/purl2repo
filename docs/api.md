@@ -43,12 +43,26 @@ mode returns a warning and no release link. Strict mode raises
 Public models are frozen dataclasses:
 
 - `ParsedPurl`
+- `RepositoryRef`
 - `RepositoryCandidate`
 - `ReleaseLink`
 - `ResolutionResult`
 - `ResolverSettings`
 
 Each model includes `to_dict()` for JSON-compatible serialization.
+
+`ResolutionResult.canonical_repository` is the first-class repository contract.
+It includes `url`, `kind`, `platform`, `host`, `namespace`, `name`,
+`is_canonical`, `confidence`, and `reasons`. `repository_url`,
+`repository_type`, and `repository_kind` are convenience fields for callers that
+do not need the full nested object.
+
+`ResolutionResult.version_reference` mirrors `release_link` and may represent a
+release, tag, source tree, package page, revision, or registry version depending
+on the PURL type.
+
+Repository kinds are `source_code`, `artifact_hub`, `registry`, `vcs`,
+`generic`, and `direct_host`.
 
 ## Errors
 
@@ -63,6 +77,10 @@ In non-strict mode, incomplete repository or release results usually return
 warnings instead of exceptions. In strict mode, weak or missing core resolution
 states raise explicit exceptions.
 
+Repository URL validation runs when network is available. Candidates that verify
+as missing are discarded before `canonical_repository` is selected. In
+`no_network=True`, validation is skipped.
+
 ## Fallback Scraping
 
 Repository resolution uses structured metadata first. If no usable structured
@@ -71,3 +89,13 @@ package/project pages and metadata-provided homepage URLs. Scraped candidates ar
 returned as repository candidates with `source="scrape"` and reasons that include
 source page, extraction method, and score cap. Scraping is not a crawler and does
 not run for direct-host PURLs such as GitHub or Bitbucket.
+
+## Tiered PURL Behavior
+
+- PyPI, npm, Cargo, Maven, NuGet, and Go use metadata-backed resolution.
+- GitHub and Bitbucket PURLs resolve directly from the PURL path.
+- Generic PURLs use `vcs_url`, `repository_url`, then `download_url`.
+- Hugging Face PURLs resolve to Hugging Face as the canonical artifact hub.
+- Hugging Face revision links are returned only after the `/tree/{revision}` URL
+  is verified; otherwise `version_reference` is `None`.
+- MLflow PURLs require `registry_url` or `tracking_uri`.

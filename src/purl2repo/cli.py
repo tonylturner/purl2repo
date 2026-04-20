@@ -18,7 +18,7 @@ from purl2repo.errors import (
     UnsupportedEcosystemError,
 )
 from purl2repo.models import ResolutionResult, ResolverSettings
-from purl2repo.resolution.engine import ECOSYSTEMS, HOSTS
+from purl2repo.resolution.engine import ECOSYSTEMS, HOSTS, SUPPORTED_PURL_TYPES
 from purl2repo.version import __version__
 
 app = typer.Typer(help="Resolve Package URLs to source repositories and release links.")
@@ -103,7 +103,10 @@ def _emit_result(result: ResolutionResult, *, json_output: bool, pretty: bool, t
         return
 
     typer.echo(f"Repository: {result.repository_url or 'not found'}")
+    typer.echo(f"Kind: {result.repository_kind or 'unknown'}")
     typer.echo(f"Type: {result.repository_type or 'unknown'}")
+    if result.release_link and result.release_link.version:
+        typer.echo(f"Version: {result.release_link.version}")
     typer.echo(f"Release: {result.release_link.url if result.release_link else 'not found'}")
     typer.echo(f"Confidence: {result.confidence}")
     if result.evidence:
@@ -238,6 +241,7 @@ def supports(json_output: JsonOption = False, pretty: PrettyOption = False) -> N
 
     payload = {
         "ecosystems": sorted(ECOSYSTEMS),
+        "purl_types": sorted(SUPPORTED_PURL_TYPES),
         "hosts": [*sorted(HOSTS), "generic"],
     }
     if json_output:

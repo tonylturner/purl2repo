@@ -13,7 +13,7 @@ from purl2repo.utils.urls import classify_host, normalize_repo_url, url_host
 MAX_SCRAPE_PAGES = 3
 SCRAPE_SCORE_CAP = 60.0
 DIRECT_HOST_PURL_TYPES = {"github", "gitlab", "bitbucket"}
-NO_UPSTREAM_SCRAPE_TYPES = {"huggingface"}
+NO_UPSTREAM_SCRAPE_TYPES = {"huggingface", "mlflow"}
 
 
 class _AnchorParser(HTMLParser):

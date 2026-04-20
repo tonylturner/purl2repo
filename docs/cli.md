@@ -33,6 +33,32 @@ Fallback scraping has no CLI flag because it is part of repository resolution.
 It only runs when structured metadata does not yield a usable candidate. When it
 runs, output includes a warning explaining that fallback scraping was used.
 
+Human output includes `Repository`, `Kind`, `Type`, optional `Version`, release
+or revision URL, confidence, evidence, and warnings. JSON output includes the
+full `canonical_repository` object and `version_reference` object.
+
+Example artifact-hub output:
+
+```bash
+purl2repo resolve pkg:huggingface/microsoft/deberta-v3-base@main
+```
+
+```text
+Repository: https://huggingface.co/microsoft/deberta-v3-base
+Kind: artifact_hub
+Type: huggingface
+Version: main
+Release: https://huggingface.co/microsoft/deberta-v3-base/tree/main
+Confidence: high
+```
+
+If a Hugging Face revision cannot be verified, the CLI still reports the
+canonical Hugging Face repository and prints `Release: not found`.
+
+Repository URLs are validated during normal networked resolution. If a candidate
+verifies as missing, it is discarded and the CLI reports warnings or `Repository:
+not found`. `--no-network` skips this validation.
+
 ## Exit Codes
 
 - `0`: success

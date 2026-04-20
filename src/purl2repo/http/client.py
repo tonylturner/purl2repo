@@ -92,7 +92,7 @@ class HttpClient:
     def _url_exists_uncached(self, url: str) -> bool:
         try:
             response = self._client.head(url)
-            if response.status_code == 405:
+            if response.status_code == 405 or response.status_code >= 400:
                 response = self._client.get(url)
             return 200 <= response.status_code < 400
         except httpx.HTTPError as exc:

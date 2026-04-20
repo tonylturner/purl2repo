@@ -18,6 +18,7 @@ SOURCE_WEIGHTS = {
     "pom_scm": 100.0,
     "homepage": 85.0,
     "metadata_page": 45.0,
+    "module_path": 95.0,
     "scrape": 35.0,
     "user_override": 100.0,
 }
@@ -31,6 +32,7 @@ SOURCE_PRIORITY = {
     "project_urls_code": 2,
     "homepage": 3,
     "metadata_page": 4,
+    "module_path": 2,
     "scrape": 5,
     "user_override": 0,
 }

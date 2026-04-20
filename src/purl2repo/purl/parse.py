@@ -58,7 +58,7 @@ def parse_purl(purl: str) -> ParsedPurl:
         raise InvalidPurlError("PURL must start with 'pkg:'.")
 
     without_scheme = raw[4:]
-    if "://" in without_scheme:
+    if without_scheme.startswith("//"):
         raise InvalidPurlError("PURL must not contain a URL authority component.")
 
     main_and_query, sep, subpath_raw = without_scheme.partition("#")

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
+from urllib.parse import urlsplit
 
 from purl2repo.ecosystems.base import EcosystemResolver, Metadata
 from purl2repo.ecosystems.cargo import CargoResolver
+from purl2repo.ecosystems.golang import GoResolver
 from purl2repo.ecosystems.maven import MavenResolver
 from purl2repo.ecosystems.npm import NpmResolver
+from purl2repo.ecosystems.nuget import NuGetResolver
 from purl2repo.ecosystems.pypi import PyPiResolver
 from purl2repo.errors import (
     MetadataFetchError,
@@ -25,6 +28,7 @@ from purl2repo.models import (
     ParsedPurl,
     ReleaseLink,
     RepositoryCandidate,
+    RepositoryRef,
     ResolutionResult,
     ResolverSettings,
 )
@@ -38,13 +42,21 @@ from purl2repo.resolution.scraper import (
     scraped_to_repository_candidate,
     should_scrape_purl,
 )
+from purl2repo.utils.urls import classify_host, normalize_repo_url, url_host
 
 ECOSYSTEMS: dict[str, type[EcosystemResolver]] = {
-    "pypi": PyPiResolver,
-    "npm": NpmResolver,
     "cargo": CargoResolver,
+    "golang": GoResolver,
     "maven": MavenResolver,
+    "npm": NpmResolver,
+    "nuget": NuGetResolver,
+    "pypi": PyPiResolver,
 }
+
+DIRECT_HOST_TYPES = {"github", "bitbucket"}
+ARTIFACT_HUB_TYPES = {"huggingface", "mlflow"}
+GENERIC_TYPES = {"generic"}
+SUPPORTED_PURL_TYPES = set(ECOSYSTEMS) | DIRECT_HOST_TYPES | ARTIFACT_HUB_TYPES | GENERIC_TYPES
 
 HOSTS: dict[str, HostAdapter] = {
     "github.com": GitHubAdapter(),
@@ -69,6 +81,13 @@ class ResolutionEngine:
 
     def resolve(self, purl: str, *, include_release: bool = True) -> ResolutionResult:
         parsed = self.parse(purl)
+        if parsed.type in DIRECT_HOST_TYPES:
+            return self._resolve_direct_host(parsed, include_release=include_release)
+        if parsed.type in ARTIFACT_HUB_TYPES:
+            return self._resolve_artifact_hub(parsed, include_release=include_release)
+        if parsed.type in GENERIC_TYPES:
+            return self._resolve_generic(parsed, include_release=include_release)
+
         adapter = self._adapter_for(parsed)
         warnings: list[str] = []
         evidence: list[str] = []
@@ -84,7 +103,11 @@ class ResolutionEngine:
             warnings.append(f"Could not fetch metadata from {adapter.metadata_source}")
             return self._empty_result(parsed, warnings, evidence, metadata_sources)
 
-        candidates = score_candidates(adapter.extract_candidates(parsed, metadata), parsed)
+        candidates = self._validate_repository_candidates(
+            score_candidates(adapter.extract_candidates(parsed, metadata), parsed),
+            warnings,
+            evidence,
+        )
         structured_confidence = confidence_from_score(candidates[0].score if candidates else 0.0)
         if structured_confidence == "none" and should_scrape_purl(parsed):
             scrape_pages = [
@@ -107,9 +130,13 @@ class ResolutionEngine:
             if scrape_repository_candidates:
                 warnings.append(evidence_messages.used_fallback_scraping())
                 evidence.append(evidence_messages.used_fallback_scraping())
-                candidates = score_candidates(
-                    [*candidates, *scrape_repository_candidates],
-                    parsed,
+                candidates = self._validate_repository_candidates(
+                    score_candidates(
+                        [*candidates, *scrape_repository_candidates],
+                        parsed,
+                    ),
+                    warnings,
+                    evidence,
                 )
         best = candidates[0] if candidates else None
         confidence = confidence_from_score(best.score if best else 0.0)
@@ -157,8 +184,17 @@ class ResolutionEngine:
             purl=parsed,
             repository_url=best.normalized_url if best and confidence != "none" else None,
             repository_type=best.repository_type if best and confidence != "none" else None,
+            repository_kind=(
+                _repository_kind_for_candidate(best) if best and confidence != "none" else None
+            ),
             repository_candidates=candidates,
+            canonical_repository=(
+                _repository_ref_from_candidate(best, confidence)
+                if best and confidence != "none"
+                else None
+            ),
             release_link=release_link,
+            version_reference=release_link,
             confidence=confidence,
             evidence=evidence,
             warnings=warnings,
@@ -183,6 +219,253 @@ class ResolutionEngine:
         if not adapter_cls:
             raise UnsupportedEcosystemError(f"Unsupported package type: {parsed.type}")
         return adapter_cls()
+
+    def _resolve_direct_host(
+        self, parsed: ParsedPurl, *, include_release: bool
+    ) -> ResolutionResult:
+        warnings: list[str] = []
+        evidence = [f"Resolved {parsed.type} purl directly without repository inference"]
+        if not parsed.namespace:
+            warnings.append("Direct-host purl is missing a repository namespace")
+            if self.settings.strict:
+                raise NoRepositoryFoundError(f"No repository found for {parsed.raw}")
+            return self._empty_result(parsed, warnings, evidence, [f"{parsed.type}-direct"])
+
+        host = "github.com" if parsed.type == "github" else "bitbucket.org"
+        platform = "github" if parsed.type == "github" else "bitbucket"
+        url = f"https://{host}/{parsed.namespace}/{parsed.name}"
+        candidate = RepositoryCandidate(
+            url=url,
+            normalized_url=url,
+            host=host,
+            repository_type=platform,
+            source="direct_host",
+            score=100.0,
+            reasons=[f"Repository identity encoded directly by pkg:{parsed.type} purl"],
+        )
+        repository = RepositoryRef(
+            url=url,
+            kind="source_code",
+            platform=platform,
+            host=host,
+            namespace=parsed.namespace,
+            name=parsed.name,
+            is_canonical=True,
+            confidence="high",
+            reasons=list(candidate.reasons),
+        )
+        release_link = None
+        if include_release:
+            release_link = self._direct_release_link(parsed, candidate, warnings, evidence)
+        return self._direct_result(
+            parsed=parsed,
+            repository=repository,
+            candidate=candidate,
+            release_link=release_link,
+            confidence="high",
+            evidence=evidence,
+            warnings=warnings,
+            metadata_sources=[f"{parsed.type}-direct"],
+        )
+
+    def _resolve_artifact_hub(
+        self, parsed: ParsedPurl, *, include_release: bool
+    ) -> ResolutionResult:
+        if parsed.type == "huggingface":
+            return self._resolve_huggingface(parsed, include_release=include_release)
+        return self._resolve_mlflow(parsed, include_release=include_release)
+
+    def _resolve_huggingface(
+        self, parsed: ParsedPurl, *, include_release: bool
+    ) -> ResolutionResult:
+        repo_path = f"{parsed.namespace}/{parsed.name}" if parsed.namespace else parsed.name
+        url = f"https://huggingface.co/{repo_path}"
+        evidence = ["Resolved Hugging Face purl to canonical artifact hub repository"]
+        warnings: list[str] = []
+        candidate = RepositoryCandidate(
+            url=url,
+            normalized_url=url,
+            host="huggingface.co",
+            repository_type="huggingface",
+            source="artifact_hub",
+            score=100.0,
+            reasons=["Hugging Face is canonical for pkg:huggingface artifacts"],
+        )
+        repository = RepositoryRef(
+            url=url,
+            kind="artifact_hub",
+            platform="huggingface",
+            host="huggingface.co",
+            namespace=parsed.namespace,
+            name=parsed.name,
+            is_canonical=True,
+            confidence="high",
+            reasons=list(candidate.reasons),
+        )
+        release_link = None
+        if include_release:
+            if parsed.version:
+                revision_url = f"{url}/tree/{parsed.version}"
+                try:
+                    if self.client.url_exists(revision_url):
+                        release_link = ReleaseLink(
+                            url=revision_url,
+                            kind="revision",
+                            version=parsed.version,
+                            source="huggingface",
+                        )
+                        evidence.append("Verified Hugging Face revision link exists")
+                    else:
+                        warnings.append(
+                            "Hugging Face revision link could not be verified; "
+                            "returning canonical repository only"
+                        )
+                        if self.settings.strict:
+                            raise NoReleaseFoundError(
+                                f"No Hugging Face revision link found for {parsed.raw}"
+                            )
+                except MetadataFetchError:
+                    if self.settings.strict:
+                        raise
+                    warnings.append(
+                        "Could not verify Hugging Face revision link; "
+                        "returning canonical repository only"
+                    )
+            else:
+                warnings.append(evidence_messages.skipped_release_no_version())
+                evidence.append(evidence_messages.skipped_release_no_version())
+        return self._direct_result(
+            parsed=parsed,
+            repository=repository,
+            candidate=candidate,
+            release_link=release_link,
+            confidence="high",
+            evidence=evidence,
+            warnings=warnings,
+            metadata_sources=["huggingface-purl"],
+        )
+
+    def _resolve_mlflow(self, parsed: ParsedPurl, *, include_release: bool) -> ResolutionResult:
+        registry_url = parsed.qualifiers.get("registry_url") or parsed.qualifiers.get(
+            "tracking_uri"
+        )
+        evidence = ["Evaluated MLflow purl as artifact hub reference"]
+        warnings: list[str] = []
+        if not registry_url:
+            warnings.append("MLflow purl requires a registry_url or tracking_uri qualifier")
+            if self.settings.strict:
+                raise NoRepositoryFoundError(f"No MLflow registry URL found for {parsed.raw}")
+            return self._empty_result(parsed, warnings, evidence, ["mlflow-purl"])
+
+        url = registry_url.rstrip("/")
+        candidate = RepositoryCandidate(
+            url=url,
+            normalized_url=url,
+            host=url_host(url),
+            repository_type="mlflow",
+            source="artifact_hub",
+            score=85.0,
+            reasons=["MLflow registry URL supplied by purl qualifier"],
+        )
+        repository = RepositoryRef(
+            url=url,
+            kind="artifact_hub",
+            platform="mlflow",
+            host=url_host(url) or None,
+            namespace=parsed.namespace,
+            name=parsed.name,
+            is_canonical=True,
+            confidence="medium",
+            reasons=list(candidate.reasons),
+        )
+        release_link = None
+        if include_release:
+            if parsed.version:
+                release_link = ReleaseLink(
+                    url=url,
+                    kind="version",
+                    version=parsed.version,
+                    source="mlflow",
+                )
+            else:
+                warnings.append(evidence_messages.skipped_release_no_version())
+                evidence.append(evidence_messages.skipped_release_no_version())
+        return self._direct_result(
+            parsed=parsed,
+            repository=repository,
+            candidate=candidate,
+            release_link=release_link,
+            confidence="medium",
+            evidence=evidence,
+            warnings=warnings,
+            metadata_sources=["mlflow-purl"],
+        )
+
+    def _resolve_generic(self, parsed: ParsedPurl, *, include_release: bool) -> ResolutionResult:
+        evidence = ["Resolved generic purl from explicit URL qualifiers"]
+        warnings: list[str] = []
+        selected_key = next(
+            (
+                key
+                for key in ("vcs_url", "repository_url", "download_url")
+                if parsed.qualifiers.get(key)
+            ),
+            None,
+        )
+        if not selected_key:
+            warnings.append(
+                "Generic purl requires one of vcs_url, repository_url, or download_url qualifiers"
+            )
+            if self.settings.strict:
+                raise NoRepositoryFoundError(f"No repository qualifier found for {parsed.raw}")
+            return self._empty_result(parsed, warnings, evidence, ["generic-purl-qualifiers"])
+
+        source_url = parsed.qualifiers[selected_key]
+        normalized = source_url.rstrip("/")
+        if selected_key != "download_url":
+            normalized = normalize_repo_url(source_url) or normalized
+
+        host = url_host(normalized)
+        platform = classify_host(host) if host else "generic"
+        kind = "vcs" if selected_key in {"vcs_url", "repository_url"} else "generic"
+        confidence = "high" if selected_key == "vcs_url" else "medium"
+        candidate = RepositoryCandidate(
+            url=source_url,
+            normalized_url=normalized,
+            host=host,
+            repository_type=platform,
+            source="generic_qualifier",
+            score=90.0 if selected_key == "vcs_url" else 70.0,
+            reasons=[f"Candidate from generic purl {selected_key} qualifier"],
+        )
+        repository = RepositoryRef(
+            url=normalized,
+            kind=kind,
+            platform=platform,
+            host=host or None,
+            namespace=parsed.namespace,
+            name=parsed.name,
+            is_canonical=selected_key != "download_url",
+            confidence=confidence,
+            reasons=list(candidate.reasons),
+        )
+        release_link = None
+        if include_release:
+            if parsed.version and kind == "vcs":
+                release_link = self._direct_release_link(parsed, candidate, warnings, evidence)
+            elif not parsed.version:
+                warnings.append(evidence_messages.skipped_release_no_version())
+                evidence.append(evidence_messages.skipped_release_no_version())
+        return self._direct_result(
+            parsed=parsed,
+            repository=repository,
+            candidate=candidate,
+            release_link=release_link,
+            confidence=confidence,
+            evidence=evidence,
+            warnings=warnings,
+            metadata_sources=["generic-purl-qualifiers"],
+        )
 
     def _host_adapter(self, host: str) -> HostAdapter | None:
         if not host:
@@ -224,6 +507,87 @@ class ResolutionEngine:
         warnings.append(evidence_messages.unverified_release_warning())
         return None
 
+    def _direct_release_link(
+        self,
+        parsed: ParsedPurl,
+        candidate: RepositoryCandidate,
+        warnings: list[str],
+        evidence: list[str],
+    ) -> ReleaseLink | None:
+        if not parsed.version:
+            warnings.append(evidence_messages.skipped_release_no_version())
+            evidence.append(evidence_messages.skipped_release_no_version())
+            return None
+        host_adapter = self._host_adapter(candidate.host)
+        if host_adapter is None:
+            return None
+        return host_adapter.infer_release_link(candidate.normalized_url, parsed.version)
+
+    def _direct_result(
+        self,
+        *,
+        parsed: ParsedPurl,
+        repository: RepositoryRef,
+        candidate: RepositoryCandidate,
+        release_link: ReleaseLink | None,
+        confidence: str,
+        evidence: list[str],
+        warnings: list[str],
+        metadata_sources: list[str],
+    ) -> ResolutionResult:
+        if release_link:
+            evidence.append(evidence_messages.resolved_release())
+        if not self._repository_url_is_valid(repository.url, warnings, evidence):
+            if self.settings.strict:
+                raise NoRepositoryFoundError(f"Repository URL did not validate: {repository.url}")
+            return self._empty_result(parsed, warnings, evidence, metadata_sources)
+        return ResolutionResult(
+            purl=parsed,
+            repository_url=repository.url,
+            repository_type=repository.platform,
+            repository_kind=repository.kind,
+            repository_candidates=[candidate],
+            canonical_repository=repository,
+            release_link=release_link,
+            version_reference=release_link,
+            confidence=confidence,
+            evidence=evidence,
+            warnings=warnings,
+            metadata_sources=metadata_sources,
+        )
+
+    def _validate_repository_candidates(
+        self,
+        candidates: list[RepositoryCandidate],
+        warnings: list[str],
+        evidence: list[str],
+    ) -> list[RepositoryCandidate]:
+        validated: list[RepositoryCandidate] = []
+        for candidate in candidates:
+            if self._repository_url_is_valid(candidate.normalized_url, warnings, evidence):
+                validated.append(candidate)
+        return validated
+
+    def _repository_url_is_valid(
+        self,
+        url: str,
+        warnings: list[str],
+        evidence: list[str],
+    ) -> bool:
+        if self.settings.no_network:
+            return True
+        try:
+            if self.client.url_exists(url, ttl_seconds=86400):
+                evidence.append(f"Validated repository URL: {url}")
+                return True
+        except MetadataFetchError:
+            if self.settings.strict:
+                raise
+            warnings.append(f"Could not validate repository URL: {url}")
+            return True
+        warnings.append(f"Repository URL did not validate and was discarded: {url}")
+        return False
+
     def _empty_result(
         self,
         parsed: ParsedPurl,
@@ -235,10 +599,38 @@ class ResolutionEngine:
             purl=parsed,
             repository_url=None,
             repository_type=None,
+            repository_kind=None,
             repository_candidates=[],
+            canonical_repository=None,
             release_link=None,
+            version_reference=None,
             confidence="none",
             evidence=evidence,
             warnings=warnings,
             metadata_sources=metadata_sources,
         )
+
+
+def _repository_kind_for_candidate(candidate: RepositoryCandidate) -> str:
+    if candidate.repository_type in {"github", "gitlab", "bitbucket", "generic_git"}:
+        return "source_code"
+    return "generic"
+
+
+def _repository_ref_from_candidate(
+    candidate: RepositoryCandidate, confidence: str
+) -> RepositoryRef:
+    parts = [part for part in urlsplit(candidate.normalized_url).path.split("/") if part]
+    namespace = "/".join(parts[:-1]) if len(parts) >= 2 else None
+    name = parts[-1] if parts else None
+    return RepositoryRef(
+        url=candidate.normalized_url,
+        kind=_repository_kind_for_candidate(candidate),
+        platform=candidate.repository_type,
+        host=candidate.host or None,
+        namespace=namespace,
+        name=name,
+        is_canonical=True,
+        confidence=confidence,
+        reasons=list(candidate.reasons),
+    )

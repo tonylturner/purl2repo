@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "purl2repo"
 version = "2.0.0"
-description = "Resolve Package URLs to canonical source repositories and version-specific release links."
+description = "Resolve Package URLs to canonical source, VCS, registry, and artifact hub repositories."
 readme = "README.md"
 requires-python = ">=3.14"
 license = "Apache-2.0"

@@ -12,7 +12,15 @@ Keep a Changelog and the project uses Semantic Versioning.
 - Public API functions: `parse_purl`, `resolve`, `resolve_repository`,
   `resolve_release`, and reusable `Resolver`.
 - Versionless PURL parsing and repository-only resolution behavior.
-- PyPI, npm, Cargo, and Maven ecosystem adapters.
+- PyPI, npm, Cargo, Maven, NuGet, and Go ecosystem adapters.
+- Tiered PURL support for direct-host, generic, and artifact-hub package types.
+- `RepositoryRef` and `canonical_repository` output for source code, VCS,
+  generic, and artifact-hub repositories.
+- Hugging Face artifact hub resolution with verified revision links.
+- Direct `pkg:github` and `pkg:bitbucket` resolution without inference.
+- Generic PURL qualifier resolution for `vcs_url`, `repository_url`, and
+  `download_url`.
+- Repository URL validation that discards candidates verified as missing.
 - GitHub, GitLab, Bitbucket, and generic git host adapters.
 - Scored repository candidates with confidence mapping, evidence, warnings, and
   stable JSON serialization.
@@ -27,6 +35,7 @@ Keep a Changelog and the project uses Semantic Versioning.
 
 - Migrated to a `src/` layout and Python 3.14 package metadata.
 - Replaced ad hoc return dictionaries with stable dataclass contracts.
+- Expanded the repository model beyond Git-style source repositories.
 - Reworked resolution into parse, fetch, extract, normalize, score, select, and
   release-link stages.
 - Changed CLI behavior to explicit subcommands and stable JSON output.
@@ -36,6 +45,8 @@ Keep a Changelog and the project uses Semantic Versioning.
 - Version is no longer required for parsing or repository resolution.
 - Repository field naming is now consistent across API and CLI output.
 - GitHub-only assumptions were replaced by host-aware normalization.
+- Hugging Face PURLs are no longer treated as candidates for upstream GitHub
+  discovery.
 - Unit tests no longer depend on live network calls.
 
 ### Removed

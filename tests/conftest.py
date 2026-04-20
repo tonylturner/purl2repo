@@ -32,7 +32,27 @@ class FakeHttpClient:
 
     def url_exists(self, url: str, *, ttl_seconds: int = 900) -> bool:
         _ = ttl_seconds
-        return url.endswith("/v2.31.0") or url.endswith("/v18.2.0") or url.endswith("/v0.8.5")
+        if "missing" in url or "404" in url:
+            return False
+        version_like = any(
+            marker in url
+            for marker in (
+                "/releases/",
+                "/tags/",
+                "/tree/",
+                "/src/",
+                "/packages/",
+            )
+        )
+        if version_like:
+            return (
+                url.endswith("/v2.31.0")
+                or url.endswith("/v18.2.0")
+                or url.endswith("/v0.8.5")
+                or url.endswith("/tree/main")
+                or "/packages/" in url
+            )
+        return url.startswith(("https://", "http://"))
 
     def close(self) -> None:
         return None
