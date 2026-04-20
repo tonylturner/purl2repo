@@ -59,6 +59,28 @@ def test_scraped_candidate_conversion():
     assert "Score cap: 60" in candidate.reasons
 
 
+def test_scraper_ignores_generic_non_source_links():
+    client = FakeHttpClient(
+        text_payloads={
+            "https://example.com/pkg": (
+                '<a href="https://bundlephobia.com/package/demo">Bundle size</a>'
+                '<a href="https://www.npmjs.com/policies/conduct">Code of conduct</a>'
+                '<a href="https://www.npmjs.com/support">Repository support</a>'
+                '<a href="https://git.example.com/org/demo">Source</a>'
+            )
+        }
+    )
+
+    scraped = FallbackScraper(client).scrape(
+        parse_purl("pkg:npm/demo"),
+        ["https://example.com/pkg"],
+    )
+
+    assert [candidate.normalized_url for candidate in scraped] == [
+        "https://git.example.com/org/demo"
+    ]
+
+
 def test_default_fallback_pages():
     assert default_fallback_pages(parse_purl("pkg:pypi/demo"), {}) == [
         "https://pypi.org/project/demo/"
@@ -123,6 +145,31 @@ def test_engine_uses_scraper_when_structured_metadata_has_no_repo():
         "Used fallback scraping because structured metadata did not yield "
         "a usable repository candidate" in result.warnings
     )
+
+
+def test_engine_uses_deps_dev_before_scraping(fake_http_factory):
+    fake_http_factory(
+        json_payloads={
+            "https://pypi.org/pypi/demo/1.0.0/json": {"info": {}},
+            "https://api.deps.dev/v3/systems/PYPI/packages/demo/versions/1.0.0": {
+                "relatedProjects": [
+                    {
+                        "projectKey": {"id": "github.com/org/demo"},
+                        "relationType": "SOURCE_REPO",
+                    }
+                ]
+            },
+        }
+    )
+    engine = ResolutionEngine(ResolverSettings())
+
+    result = engine.resolve("pkg:pypi/demo@1.0.0")
+
+    assert result.repository_url == "https://github.com/org/demo"
+    assert result.confidence == "medium"
+    assert result.repository_candidates[0].source == "deps_dev_related_project"
+    assert "deps-dev" in result.metadata_sources
+    assert any("deps.dev" in item for item in result.evidence)
 
 
 def test_docs_homepage_does_not_block_fallback_scraping():

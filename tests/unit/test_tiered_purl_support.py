@@ -6,7 +6,7 @@ from purl2repo import Resolver, resolve
 from purl2repo.cli import app
 from purl2repo.ecosystems.golang import GoResolver
 from purl2repo.ecosystems.nuget import NuGetResolver
-from purl2repo.errors import NoRepositoryFoundError
+from purl2repo.errors import MetadataFetchError, NoRepositoryFoundError
 from purl2repo.purl.parse import parse_purl
 
 runner = CliRunner()
@@ -190,6 +190,16 @@ def test_generic_uses_vcs_url_before_other_url_qualifiers():
     assert result.metadata_sources == ["generic-purl-qualifiers"]
 
 
+def test_generic_vcs_url_strips_embedded_revision():
+    result = resolve(
+        "pkg:generic/bitwarderl?vcs_url=git%2Bhttps://git.fsfe.org/dxtr/bitwarderl%40cc55108da32",
+        no_network=True,
+    )
+
+    assert result.repository_url == "https://git.fsfe.org/dxtr/bitwarderl"
+    assert result.repository_kind == "vcs"
+
+
 def test_generic_repository_download_and_missing_qualifier_paths():
     repository = resolve(
         "pkg:generic/example?repository_url=https://gitlab.com/group/project",
@@ -216,12 +226,24 @@ def test_mlflow_artifact_hub_paths():
         "pkg:mlflow/team/model@7?registry_url=https://mlflow.example.com",
         no_network=True,
     )
+    repository_url = resolve(
+        "pkg:mlflow/trafficsigns@10?"
+        "model_uuid=36233173b22f4c89b451f1228d700d49&"
+        "run_id=410a3121-2709-4f88-98dd-dba0ef056b0a&"
+        "repository_url=https://adb-5245952564735461.0.azuredatabricks.net/api/2.0/mlflow",
+        no_network=True,
+    )
     missing = resolve("pkg:mlflow/team/model", no_network=True)
 
     assert resolved.repository_kind == "artifact_hub"
     assert resolved.repository_type == "mlflow"
     assert resolved.release_link is not None
     assert resolved.release_link.kind == "version"
+    assert repository_url.repository_url == (
+        "https://adb-5245952564735461.0.azuredatabricks.net/api/2.0/mlflow"
+    )
+    assert repository_url.release_link is not None
+    assert repository_url.purl.name == "trafficsigns"
     assert missing.repository_url is None
 
     with Resolver(strict=True, no_network=True) as resolver:
@@ -327,13 +349,53 @@ def test_golang_module_path_resolution(fake_http_factory):
     assert result.release_link.source == "github"
 
 
+def test_golang_module_path_survives_proxy_metadata_failure(fake_http_factory):
+    fake = fake_http_factory()
+    fake.get_json = lambda url, ttl_seconds=3600: (_ for _ in ()).throw(
+        MetadataFetchError(f"down: {url}")
+    )
+
+    result = resolve("pkg:golang/github.com/gorilla/context@234fd47e07d1004f0aed9c")
+
+    assert result.repository_url == "https://github.com/gorilla/context"
+    assert result.repository_kind == "source_code"
+    assert result.release_link is not None
+    assert result.release_link.kind == "commit"
+    assert any("go-module-proxy" in warning for warning in result.warnings)
+
+
+def test_golang_vanity_import_metadata_prefers_source_repo(fake_http_factory):
+    fake_http_factory(
+        {
+            "https://proxy.golang.org/google.golang.org/genproto/@latest": {
+                "Version": "v0.0.1",
+            }
+        },
+        {
+            "https://google.golang.org/genproto?go-get=1": (
+                '<meta name="go-import" '
+                'content="google.golang.org/genproto git '
+                'https://github.com/googleapis/go-genproto">'
+            )
+        },
+    )
+
+    result = resolve("pkg:golang/google.golang.org/genproto")
+
+    assert result.repository_url == "https://github.com/googleapis/go-genproto"
+    assert result.repository_candidates[0].source == "go_import_meta"
+
+
 def test_golang_latest_and_module_path_helpers(fake_http_factory):
     fake_http_factory(
         {
             "https://proxy.golang.org/example.com/mod/@latest": {
                 "Version": "v0.1.0",
             }
-        }
+        },
+        {
+            "https://example.com/mod?go-get=1": "<html></html>",
+        },
     )
 
     result = resolve("pkg:golang/example.com/mod")

@@ -12,6 +12,8 @@ numeric score and reasons that are included in API and CLI JSON output.
 - Maven SCM URL: `+100`
 - PyPI `project_urls` labels such as Source, Repository, or Code: `+95`
 - Structured homepage that clearly points to a repository root: `+85`
+- deps.dev third-party fallback source repository, link, or attestation:
+  starts at `+50` to `+60` and is capped at `75`
 - Scraped fallback link from an allowed HTML page: starts at `+35` and is capped
   at `60`
 - Recognized git hosting provider: `+10`
@@ -40,13 +42,15 @@ After scoring, repository URLs are validated when network is available.
 Validation does not increase confidence; it removes candidates that verify as
 missing so a 404 cannot become the canonical repository.
 
-Structured metadata wins over scraping because registry APIs and POM fields are
-more stable, auditable, and deterministic than arbitrary web pages.
+Structured metadata wins over deps.dev and scraping because registry APIs and
+POM fields are first-party, auditable, and deterministic. deps.dev is useful as
+an Open Source Insights fallback, but it is still a third-party aggregation
+source, so its candidates are capped below high confidence.
 
-Scraping only runs after structured metadata yields no usable candidate. Scraped
-candidates remain visible in the result for explainability, but their score is
-capped below clean structured metadata. Whenever scraping is used, the result
-includes:
+Scraping only runs after structured metadata and deps.dev yield no usable
+candidate. Scraped candidates remain visible in the result for explainability,
+but their score is capped below clean structured metadata. Whenever scraping is
+used, the result includes:
 
 ```text
 Used fallback scraping because structured metadata did not yield a usable repository candidate

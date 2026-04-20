@@ -31,6 +31,25 @@ def test_pypi_ignores_malformed_metadata_and_accepts_repo_like_project_url():
     assert candidates[0].normalized_url == "https://github.com/org/repo"
 
 
+def test_pypi_ignores_funding_project_urls_when_source_exists():
+    parsed = parse_purl("pkg:pypi/example")
+    candidates = PyPiResolver().extract_candidates(
+        parsed,
+        {
+            "info": {
+                "project_urls": {
+                    "Funding": "https://github.com/sponsors/example",
+                    "Source": "https://codeberg.org/example/project",
+                }
+            }
+        },
+    )
+
+    assert [candidate.normalized_url for candidate in candidates] == [
+        "https://codeberg.org/example/project"
+    ]
+
+
 def test_pypi_handles_missing_info():
     assert PyPiResolver().extract_candidates(parse_purl("pkg:pypi/example"), {"info": []}) == []
     assert PyPiResolver().fallback_scrape_pages(parse_purl("pkg:pypi/example"), {"info": []}) == [

@@ -32,17 +32,17 @@ These types are supported by `purl2repo` today.
 
 | PURL type | Support level | Repository model | Notes |
 | --- | --- | --- | --- |
-| `pypi` | Full | `source_code` or `generic` | Uses PyPI JSON metadata, structured source fields, fallback scraping. |
-| `npm` | Full | `source_code` or `generic` | Uses npm registry metadata and supports scoped packages. |
-| `cargo` | Full | `source_code` or `generic` | Uses crates.io metadata. |
-| `maven` | Full | `source_code` or `generic` | Uses Maven Central POM and SCM fields. |
-| `nuget` | Full | `source_code` or `generic` | Uses NuGet registration metadata. Version references point to NuGet package pages. |
-| `golang` | Full | `source_code` or `generic` | Uses Go module proxy metadata and module-path inference. |
+| `pypi` | Full | `source_code` or `generic` | Uses PyPI JSON metadata, structured source fields, deps.dev fallback, and fallback scraping. |
+| `npm` | Full | `source_code` or `generic` | Uses npm registry metadata, deps.dev fallback, and supports scoped packages. |
+| `cargo` | Full | `source_code` or `generic` | Uses crates.io metadata with deps.dev fallback. |
+| `maven` | Full | `source_code` or `generic` | Uses Maven Central POM and SCM fields with deps.dev fallback. |
+| `nuget` | Full | `source_code` or `generic` | Uses NuGet registration metadata with deps.dev fallback. Version references point to NuGet package pages. |
+| `golang` | Full | `source_code` or `generic` | Uses Go module proxy metadata, go-import metadata, module-path inference, and deps.dev fallback. |
 | `github` | Direct | `source_code` | PURL encodes the repository directly. No inference or scraping. |
 | `bitbucket` | Direct | `source_code` | PURL encodes the repository directly. No inference or scraping. |
 | `generic` | Explicit | `vcs` or `generic` | Uses `vcs_url`, then `repository_url`, then `download_url` qualifiers. |
 | `huggingface` | Artifact hub | `artifact_hub` | Hugging Face is canonical. GitHub upstream links are not chased. Revision links are returned only after verification. |
-| `mlflow` | Artifact hub | `artifact_hub` | Requires `registry_url` or `tracking_uri`; no single public canonical registry exists. |
+| `mlflow` | Artifact hub | `artifact_hub` | Requires `registry_url`, `tracking_uri`, or `repository_url`; no single public canonical registry exists. |
 
 ## Registered Upstream Types
 
@@ -73,7 +73,10 @@ These types have registry or ecosystem adapters:
 - `golang`
 
 They support metadata lookup, repository candidate extraction, scoring,
-validation, confidence, evidence, and best-effort version references.
+validation, confidence, evidence, and best-effort version references. If
+first-party ecosystem metadata cannot produce a usable repository candidate,
+`purl2repo` may query deps.dev as a lower-confidence third-party fallback before
+bounded HTML scraping.
 
 ### Direct Repository Resolution
 
@@ -95,6 +98,8 @@ contains explicit URL qualifiers:
 3. `download_url`
 
 This keeps behavior deterministic and avoids guessing from package names.
+If `vcs_url` embeds a revision suffix after the repository path, the repository
+URL is normalized without that suffix before validation.
 
 ### Artifact Hub Resolution
 
@@ -118,7 +123,35 @@ https://huggingface.co/microsoft/deberta-v3-base
 The version reference is returned only when the Hugging Face revision URL exists.
 
 For MLflow, callers must provide a registry location through `registry_url` or
-`tracking_uri`.
+`tracking_uri`. The upstream MLflow PURL type examples use `repository_url`, and
+`purl2repo` accepts that qualifier as an alias for the artifact registry
+location.
+
+## Upstream Example Coverage
+
+The unit test suite vendors the official parse, roundtrip, and build examples
+for every PURL type that `purl2repo` supports from the upstream
+`package-url/purl-spec` `tests/types` fixtures. This keeps parser behavior
+aligned with the registered type definitions while keeping normal tests
+network-free.
+
+These fixtures cover type-specific canonicalization details such as:
+
+- PyPI package names are canonicalized according to PyPI naming rules.
+- GitHub and Bitbucket owner/repository paths are normalized case-insensitively.
+- npm scoped package examples are accepted with either encoded or literal
+  `@scope` syntax and serialized canonically.
+- Go and npm subpaths are normalized without leading or trailing slashes.
+- Hugging Face commit revisions are normalized when represented as hex hashes.
+- MLflow follows the upstream distinction between case-insensitive Databricks
+  model names and case-sensitive Azure ML model names.
+
+Repository resolution is checked separately with
+`scripts/purl_spec_resolution_report.py`. That script is intentionally
+non-gating because the upstream examples are not guaranteed to reference live,
+public repositories. It also records whether fallback scraping recovered a
+repository, whether deps.dev was used, or whether no conservative candidate was
+available.
 
 ## Good Future Targets
 

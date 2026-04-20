@@ -3,7 +3,7 @@
 from purl2repo.hosts.base import HostAdapter, ordered_version_variants
 from purl2repo.models import ReleaseLink
 from purl2repo.utils.urls import normalize_repo_url
-from purl2repo.utils.versions import preferred_v_tag
+from purl2repo.utils.versions import is_commit_like, preferred_v_tag
 
 
 class GitLabAdapter(HostAdapter):
@@ -14,6 +14,8 @@ class GitLabAdapter(HostAdapter):
 
     def infer_release_link(self, repo_url: str, version: str) -> ReleaseLink | None:
         candidates = self.candidate_release_links(repo_url, version)
+        if is_commit_like(version):
+            return next((candidate for candidate in candidates if candidate.kind == "commit"), None)
         preferred = f"/{preferred_v_tag(version)}"
         return next(
             (candidate for candidate in candidates if candidate.url.endswith(preferred)),
@@ -25,6 +27,15 @@ class GitLabAdapter(HostAdapter):
         if not normalized:
             return []
         links: list[ReleaseLink] = []
+        if is_commit_like(version):
+            links.append(
+                ReleaseLink(
+                    url=f"{normalized}/-/commit/{version}",
+                    kind="commit",
+                    version=version,
+                    source="gitlab",
+                )
+            )
         for tag in ordered_version_variants(version):
             links.append(
                 ReleaseLink(

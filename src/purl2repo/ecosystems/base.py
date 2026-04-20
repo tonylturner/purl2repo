@@ -43,6 +43,12 @@ class EcosystemResolver(ABC):
         _ = parsed, metadata
         return []
 
+    def metadata_fetch_fallback(self, parsed: ParsedPurl) -> Metadata | None:
+        """Return minimal metadata when structured fetch fails but inference is possible."""
+
+        _ = parsed
+        return None
+
 
 def make_candidate(url: str | None, source: str, reason: str) -> RepositoryCandidate | None:
     if not url:

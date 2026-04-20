@@ -6,6 +6,8 @@ from typing import Any
 
 import pytest
 
+from purl2repo.errors import MetadataFetchError
+
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
@@ -21,6 +23,8 @@ class FakeHttpClient:
     def get_json(self, url: str, *, ttl_seconds: int = 3600) -> dict[str, Any]:
         _ = ttl_seconds
         if url not in self.json_payloads:
+            if url.startswith("https://api.deps.dev/"):
+                raise MetadataFetchError(f"Unexpected deps.dev URL: {url}")
             raise AssertionError(f"Unexpected JSON URL: {url}")
         return self.json_payloads[url]
 
@@ -40,6 +44,8 @@ class FakeHttpClient:
                 "/releases/",
                 "/tags/",
                 "/tree/",
+                "/commit/",
+                "/commits/",
                 "/src/",
                 "/packages/",
             )
@@ -49,6 +55,8 @@ class FakeHttpClient:
                 url.endswith("/v2.31.0")
                 or url.endswith("/v18.2.0")
                 or url.endswith("/v0.8.5")
+                or "/commit/" in url
+                or "/commits/" in url
                 or url.endswith("/tree/main")
                 or "/packages/" in url
             )

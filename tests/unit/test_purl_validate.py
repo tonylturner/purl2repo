@@ -12,7 +12,6 @@ from purl2repo.purl.validate import validate_purl
         "pkg:pypi/requests?=x",
         "pkg:pypi/re%ZZquests",
         "pkg:pypi/requests@1@2",
-        "pkg://pypi/requests",
     ],
 )
 def test_validation_rejects_malformed_purls(purl):
@@ -26,3 +25,10 @@ def test_validation_returns_parsed_model():
     assert parsed.namespace == "package-url"
     assert parsed.name == "purl-spec"
     assert parsed.subpath == "docs"
+
+
+def test_validation_accepts_authority_style_separator_from_purl_spec_examples():
+    parsed = validate_purl("pkg://pypi/requests")
+
+    assert parsed.type == "pypi"
+    assert parsed.name == "requests"

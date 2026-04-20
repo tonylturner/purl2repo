@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from html.parser import HTMLParser
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 from purl2repo.ecosystems.base import Metadata
 from purl2repo.http.client import HttpClient
 from purl2repo.models import ParsedPurl, RepositoryCandidate, ScrapedCandidate
+from purl2repo.utils.text import normalize_label
 from purl2repo.utils.urls import classify_host, normalize_repo_url, url_host
 
 MAX_SCRAPE_PAGES = 3
@@ -67,6 +68,8 @@ class FallbackScraper:
             for url, label in parser.links:
                 normalized = normalize_repo_url(url)
                 if not normalized or normalized == page.rstrip("/"):
+                    continue
+                if not _looks_like_scraped_repo_candidate(url, normalized, label):
                     continue
                 scraped.append(
                     ScrapedCandidate(
@@ -139,6 +142,53 @@ def _dedupe_scraped(candidates: list[ScrapedCandidate]) -> list[ScrapedCandidate
         if candidate.normalized_url and candidate.normalized_url not in deduped:
             deduped[candidate.normalized_url] = candidate
     return list(deduped.values())
+
+
+def _looks_like_scraped_repo_candidate(
+    original_url: str,
+    normalized_url: str,
+    label: str | None,
+) -> bool:
+    if _is_blocked_navigation_url(normalized_url):
+        return False
+    host = url_host(normalized_url)
+    if classify_host(host) != "generic_git":
+        return True
+    if original_url.rstrip("/").endswith(".git"):
+        return True
+    return bool(label and _is_generic_source_label(label))
+
+
+def _is_generic_source_label(label: str) -> bool:
+    normalized = normalize_label(label)
+    if any(
+        word in normalized.split() for word in {"conduct", "policy", "privacy", "support", "terms"}
+    ):
+        return False
+    if normalized in {"code", "source", "source code", "repo", "repository", "scm"}:
+        return True
+    return any(word in normalized for word in ("source", "repository", "repo", "scm"))
+
+
+def _is_blocked_navigation_url(url: str) -> bool:
+    parsed = urlsplit(url)
+    path_segments = {segment.lower() for segment in parsed.path.split("/") if segment}
+    if path_segments & {
+        "about",
+        "conduct",
+        "contact",
+        "help",
+        "policies",
+        "policy",
+        "privacy",
+        "security",
+        "support",
+        "terms",
+    }:
+        return True
+    return parsed.hostname in {"www.npmjs.com", "npmjs.com"} and not parsed.path.startswith(
+        "/package/"
+    )
 
 
 def _label_reason(label: str | None) -> str:

@@ -14,6 +14,8 @@ from purl2repo.models import ParsedPurl
 
 _TYPE_RE = re.compile(r"^[A-Za-z0-9.+-]+$")
 _BAD_PERCENT_RE = re.compile(r"%(?![0-9A-Fa-f]{2})")
+_HEX_VERSION_RE = re.compile(r"^[0-9A-Fa-f]+$")
+_PYPI_NAME_RE = re.compile(r"[-_.]+")
 
 
 def _decode_component(value: str, label: str) -> str:
@@ -48,6 +50,53 @@ def _encode_path_component(value: str) -> str:
     return quote(value, safe=".-_~")
 
 
+def _encode_qualifier_component(value: str) -> str:
+    return quote(value, safe=".-_~:")
+
+
+def _decode_subpath(value: str) -> str:
+    subpath = _decode_component(value, "subpath").strip("/")
+    if not subpath:
+        raise InvalidPurlError("Empty subpath is not allowed.")
+    return subpath
+
+
+def _split_package_and_version(remainder: str) -> tuple[str, str | None]:
+    version_index = remainder.rfind("@")
+    last_slash_index = remainder.rfind("/")
+    if version_index <= last_slash_index:
+        return remainder, None
+
+    package_path = remainder[:version_index]
+    version = remainder[version_index + 1 :]
+    final_package_segment = package_path[package_path.rfind("/") + 1 :]
+    if "@" in final_package_segment:
+        raise InvalidPurlError("PURL contains multiple version separators.")
+    return package_path, version
+
+
+def _normalize_package_parts(
+    purl_type: str,
+    namespace: str | None,
+    name: str,
+    version: str | None,
+    qualifiers: dict[str, str],
+) -> tuple[str | None, str, str | None]:
+    if purl_type == "pypi":
+        name = _PYPI_NAME_RE.sub("-", name).lower()
+    elif purl_type in {"github", "bitbucket"}:
+        namespace = namespace.lower() if namespace else None
+        name = name.lower()
+    elif purl_type == "mlflow":
+        repository_url = qualifiers.get("repository_url", "")
+        if "azuredatabricks.net" in repository_url.lower():
+            namespace = namespace.lower() if namespace else None
+            name = name.lower()
+    elif purl_type == "huggingface" and version and _HEX_VERSION_RE.fullmatch(version):
+        version = version.lower()
+    return namespace, name, version
+
+
 def parse_purl(purl: str) -> ParsedPurl:
     """Parse and validate a Package URL string."""
 
@@ -57,12 +106,10 @@ def parse_purl(purl: str) -> ParsedPurl:
     if not raw.startswith("pkg:"):
         raise InvalidPurlError("PURL must start with 'pkg:'.")
 
-    without_scheme = raw[4:]
-    if without_scheme.startswith("//"):
-        raise InvalidPurlError("PURL must not contain a URL authority component.")
+    without_scheme = raw[4:].lstrip("/")
 
     main_and_query, sep, subpath_raw = without_scheme.partition("#")
-    subpath = _decode_component(subpath_raw, "subpath") if sep else None
+    subpath = _decode_subpath(subpath_raw) if sep else None
 
     path_part, query_sep, query = main_and_query.partition("?")
     qualifiers = _parse_qualifiers(query if query_sep else None)
@@ -73,10 +120,8 @@ def parse_purl(purl: str) -> ParsedPurl:
     if not type_part or not _TYPE_RE.match(type_part):
         raise InvalidPurlError("PURL type is missing or invalid.")
 
-    package_path, version_sep, version_raw = remainder.partition("@")
-    if "@" in version_raw:
-        raise InvalidPurlError("PURL contains multiple version separators.")
-    version = _decode_component(version_raw, "version") if version_sep else None
+    package_path, version_raw = _split_package_and_version(remainder)
+    version = _decode_component(version_raw, "version") if version_raw is not None else None
 
     if package_path == "" or package_path.endswith("/") or package_path.startswith("/"):
         raise InvalidPurlError("PURL package path is malformed.")
@@ -87,6 +132,10 @@ def parse_purl(purl: str) -> ParsedPurl:
     else:
         namespace = "/".join(parts[:-1])
         name = parts[-1]
+
+    namespace, name, version = _normalize_package_parts(
+        type_part.lower(), namespace, name, version, qualifiers
+    )
 
     parsed = ParsedPurl(
         raw=raw,
@@ -112,7 +161,7 @@ def purl_to_string(parsed: ParsedPurl) -> str:
         value = f"{value}@{_encode_path_component(parsed.version)}"
     if parsed.qualifiers:
         query = "&".join(
-            f"{_encode_path_component(key)}={_encode_path_component(value)}"
+            f"{_encode_qualifier_component(key)}={_encode_qualifier_component(value)}"
             for key, value in sorted(parsed.qualifiers.items())
         )
         value = f"{value}?{query}"

@@ -23,7 +23,7 @@ release:
 .venv/bin/twine check dist/*
 tmpdir="$(mktemp -d)"
 python3.11 -m venv "$tmpdir/venv"
-"$tmpdir/venv/bin/python" -m pip install dist/purl2repo-2.0.0-py3-none-any.whl
+"$tmpdir/venv/bin/python" -m pip install dist/purl2repo-2.0.1-py3-none-any.whl
 "$tmpdir/venv/bin/purl2repo" parse pkg:pypi/requests
 ```
 
@@ -37,6 +37,22 @@ Live tests are separate:
 
 Fixtures live under `tests/fixtures`. Keep them small, readable, and focused on
 metadata fields used by adapters.
+
+Official upstream PURL type examples for supported types live under
+`tests/fixtures/purl_spec`. They are copied from the `package-url/purl-spec`
+`tests/types` fixtures and are exercised by `tests/unit/test_purl_spec_examples.py`.
+When adding a new supported PURL type, vendor that type's upstream fixture and
+include it in `SUPPORTED_TYPE_FIXTURES`.
+
+To compare those parser fixtures against live repository resolution, run:
+
+```bash
+.venv/bin/python scripts/purl_spec_resolution_report.py --verify-release-links
+```
+
+The report is informational and always exits successfully. Unresolved upstream
+examples are expected because several fixtures are synthetic, stale, private, or
+intended only to test PURL canonicalization.
 
 ## Adding Ecosystems Or Hosts
 

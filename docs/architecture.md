@@ -25,22 +25,31 @@
 7. Score structured candidates and sort them deterministically.
 8. Validate candidate repository URLs when network is available and discard
    candidates that verify as missing.
-9. If no usable structured candidate exists, run the bounded fallback scraper on
+9. If no usable structured candidate exists, query deps.dev as a third-party,
+   lower-confidence fallback for ecosystems covered by Open Source Insights.
+10. If deps.dev also yields no usable candidate, run the bounded fallback scraper on
    package/project pages and metadata-provided homepage URLs.
-10. Merge scraped candidates back into the candidate set with lower capped
+11. Merge fallback candidates back into the candidate set with lower capped
    scores and validate the merged repository URLs.
-11. Select the best candidate if confidence is sufficient and build a
+12. Select the best candidate if confidence is sufficient and build a
    `RepositoryRef`.
-12. If a version exists, ask the host adapter or ecosystem adapter for a
+13. If a version exists, ask the host adapter or ecosystem adapter for a
    conservative version reference.
    When `verify_release_links=True`, candidate release, tag, and source URLs are
    checked with cached host requests before one is returned.
-13. Return a `ResolutionResult` with `canonical_repository`, evidence, warnings,
+14. Return a `ResolutionResult` with `canonical_repository`, evidence, warnings,
    metadata sources, and all candidates.
 
 Adapters are intentionally narrow. Adding an ecosystem should not require
 changing parser, scoring, CLI, or serialization code beyond adapter registration
 and documentation.
+
+deps.dev is intentionally not a primary resolver. Its API can provide package
+links, SLSA source repositories, and related project mappings for PyPI, npm,
+Cargo, Maven, NuGet, and Go, but those links are third-party aggregation data.
+`purl2repo` only asks deps.dev after native ecosystem metadata fails to produce
+a usable candidate, validates any returned URL, and caps the score below
+first-party registry or POM metadata.
 
 The fallback scraper is not a crawler. It fetches only a small number of
 explicitly allowed pages per resolution and does not run for direct repository

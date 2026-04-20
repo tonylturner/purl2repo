@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from purl2repo.ecosystems.base import EcosystemResolver, Metadata, dedupe_candidates, make_candidate
+from purl2repo.errors import MetadataFetchError
 from purl2repo.http.client import HttpClient
 from purl2repo.models import ParsedPurl, RepositoryCandidate
-from purl2repo.utils.text import is_docs_like, is_source_label
+from purl2repo.utils.text import is_docs_like, is_source_label, normalize_label
 from purl2repo.utils.urls import is_repo_like_url
 
 
@@ -18,9 +19,13 @@ class PyPiResolver(EcosystemResolver):
     def fetch_metadata(self, parsed: ParsedPurl, client: HttpClient) -> Metadata:
         if parsed.version:
             url = f"https://pypi.org/pypi/{parsed.name}/{parsed.version}/json"
-        else:
-            url = f"https://pypi.org/pypi/{parsed.name}/json"
-        return client.get_json(url)
+            try:
+                return client.get_json(url)
+            except MetadataFetchError:
+                project_metadata = client.get_json(f"https://pypi.org/pypi/{parsed.name}/json")
+                project_metadata["_purl2repo_version_metadata_missing"] = parsed.version
+                return project_metadata
+        return client.get_json(f"https://pypi.org/pypi/{parsed.name}/json")
 
     def extract_candidates(
         self, parsed: ParsedPurl, metadata: Metadata
@@ -47,7 +52,11 @@ class PyPiResolver(EcosystemResolver):
                     candidates.append(
                         make_candidate(url, source, f"Candidate from project_urls['{label}']")
                     )
-                elif not is_docs_like(f"{label} {url}") and is_repo_like_url(url):
+                elif (
+                    not _is_non_repository_label(label)
+                    and not is_docs_like(f"{label} {url}")
+                    and is_repo_like_url(url)
+                ):
                     candidates.append(
                         make_candidate(
                             url,
@@ -82,6 +91,14 @@ class PyPiResolver(EcosystemResolver):
 
 def _string_value(value: Any) -> str | None:
     return value if isinstance(value, str) and value.strip() else None
+
+
+def _is_non_repository_label(label: str) -> bool:
+    normalized = normalize_label(label)
+    return any(
+        word in normalized.split()
+        for word in {"donate", "donation", "funding", "sponsor", "support"}
+    )
 
 
 def _metadata_urls(info: dict[str, Any]) -> list[str]:

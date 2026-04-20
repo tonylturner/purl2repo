@@ -2,7 +2,7 @@ import pytest
 from tests.conftest import load_json, load_text
 
 from purl2repo import Resolver, parse_purl, resolve, resolve_release, resolve_repository
-from purl2repo.errors import NoReleaseFoundError, UnsupportedEcosystemError
+from purl2repo.errors import MetadataFetchError, NoReleaseFoundError, UnsupportedEcosystemError
 from purl2repo.resolution.engine import ResolutionEngine
 
 
@@ -84,6 +84,25 @@ def test_resolve_versionless_skips_release(fake_http_factory):
     assert result.repository_url == "https://github.com/psf/requests"
     assert result.release_link is None
     assert "Version not supplied; skipped version-specific release resolution" in result.warnings
+
+
+def test_pypi_version_metadata_falls_back_to_project_metadata(fake_http_factory):
+    fake = fake_http_factory()
+
+    def get_json(url, ttl_seconds=3600):
+        _ = ttl_seconds
+        if url == "https://pypi.org/pypi/requests/0.0.0/json":
+            raise MetadataFetchError("missing version")
+        if url == "https://pypi.org/pypi/requests/json":
+            return load_json("pypi/requests.json")
+        raise AssertionError(f"Unexpected JSON URL: {url}")
+
+    fake.get_json = get_json
+
+    result = resolve("pkg:pypi/requests@0.0.0")
+
+    assert result.repository_url == "https://github.com/psf/requests"
+    assert "Version-specific metadata was not found" in result.warnings[0]
 
 
 def test_resolve_npm_cargo_and_maven_with_fixtures(fake_http_factory):

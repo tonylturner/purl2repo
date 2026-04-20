@@ -19,6 +19,10 @@ SOURCE_WEIGHTS = {
     "homepage": 85.0,
     "metadata_page": 45.0,
     "module_path": 95.0,
+    "go_import_meta": 100.0,
+    "deps_dev_related_project": 55.0,
+    "deps_dev_link": 50.0,
+    "deps_dev_attestation": 60.0,
     "scrape": 35.0,
     "user_override": 100.0,
 }
@@ -33,6 +37,10 @@ SOURCE_PRIORITY = {
     "homepage": 3,
     "metadata_page": 4,
     "module_path": 2,
+    "go_import_meta": 1,
+    "deps_dev_attestation": 4,
+    "deps_dev_related_project": 4,
+    "deps_dev_link": 4,
     "scrape": 5,
     "user_override": 0,
 }
@@ -97,6 +105,9 @@ def score_candidate(candidate: RepositoryCandidate, parsed: ParsedPurl) -> Repos
     if candidate.source == "scrape":
         score = min(score, 60.0)
         reasons.append("Scraped candidate score capped below structured metadata")
+    if candidate.source.startswith("deps_dev_"):
+        score = min(score, 75.0)
+        reasons.append("deps.dev candidate score capped below first-party metadata")
 
     return replace(
         candidate,

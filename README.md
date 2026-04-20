@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/tonylturner/purl2repo/actions/workflows/ci.yml/badge.svg)](https://github.com/tonylturner/purl2repo/actions/workflows/ci.yml)
 [![Integration](https://github.com/tonylturner/purl2repo/actions/workflows/integration.yml/badge.svg)](https://github.com/tonylturner/purl2repo/actions/workflows/integration.yml)
-[![Release](https://img.shields.io/badge/release-v2.0.0-blue.svg)](https://github.com/tonylturner/purl2repo/blob/main/docs/releases/v2.0.0.md)
+[![Release](https://img.shields.io/badge/release-v2.0.1-blue.svg)](https://github.com/tonylturner/purl2repo/blob/main/docs/releases/v2.0.1.md)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://github.com/tonylturner/purl2repo/blob/main/pyproject.toml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/tonylturner/purl2repo/blob/main/LICENSE)
 [![Typed](https://img.shields.io/badge/typed-py.typed-blue.svg)](https://typing.python.org/en/latest/spec/distributing.html)
@@ -22,7 +22,8 @@ code, a VCS URL, a generic URL, or an artifact hub such as Hugging Face.
 - Evidence, warnings, confidence, and candidate scoring.
 - Repository URL validation when network is available.
 - Conservative release, tag, source, package, and revision links.
-- Structured metadata first, bounded HTML fallback only when needed.
+- Structured metadata first, deps.dev third-party fallback second, bounded HTML
+  fallback only when needed.
 
 ## Supported PURL Types
 
@@ -140,6 +141,12 @@ Generic PURLs use explicit qualifiers:
 
 ```bash
 purl2repo resolve 'pkg:generic/example@1.0.0?vcs_url=git+https://github.com/org/repo.git'
+```
+
+MLflow PURLs need an explicit registry or tracking endpoint:
+
+```bash
+purl2repo resolve 'pkg:mlflow/trafficsigns@10?repository_url=https://adb-5245952564735461.0.azuredatabricks.net/api/2.0/mlflow'
 ```
 
 Versionless PURLs are valid:

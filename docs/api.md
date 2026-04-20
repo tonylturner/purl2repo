@@ -98,4 +98,4 @@ not run for direct-host PURLs such as GitHub or Bitbucket.
 - Hugging Face PURLs resolve to Hugging Face as the canonical artifact hub.
 - Hugging Face revision links are returned only after the `/tree/{revision}` URL
   is verified; otherwise `version_reference` is `None`.
-- MLflow PURLs require `registry_url` or `tracking_uri`.
+- MLflow PURLs require `registry_url`, `tracking_uri`, or `repository_url`.

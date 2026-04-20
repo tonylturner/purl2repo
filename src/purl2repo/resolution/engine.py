@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 from purl2repo.ecosystems.base import EcosystemResolver, Metadata
 from purl2repo.ecosystems.cargo import CargoResolver
@@ -35,6 +35,7 @@ from purl2repo.models import (
 from purl2repo.purl.parse import parse_purl
 from purl2repo.resolution import evidence as evidence_messages
 from purl2repo.resolution.cache import ResponseCache
+from purl2repo.resolution.deps_dev import fetch_deps_dev_candidates
 from purl2repo.resolution.scorer import confidence_from_score, score_candidates
 from purl2repo.resolution.scraper import (
     FallbackScraper,
@@ -42,7 +43,7 @@ from purl2repo.resolution.scraper import (
     scraped_to_repository_candidate,
     should_scrape_purl,
 )
-from purl2repo.utils.urls import classify_host, normalize_repo_url, url_host
+from purl2repo.utils.urls import classify_host, coerce_git_url, normalize_repo_url, url_host
 
 ECOSYSTEMS: dict[str, type[EcosystemResolver]] = {
     "cargo": CargoResolver,
@@ -97,11 +98,31 @@ class ResolutionEngine:
         try:
             metadata = adapter.fetch_metadata(parsed, self.client)
             evidence.append(evidence_messages.fetched(adapter.metadata_source))
-        except MetadataFetchError:
+            metadata_warning = metadata.get("_purl2repo_metadata_warning")
+            if isinstance(metadata_warning, str):
+                warnings.append(metadata_warning)
+            missing_version = metadata.get("_purl2repo_version_metadata_missing")
+            if isinstance(missing_version, str):
+                warnings.append(
+                    "Version-specific metadata was not found; "
+                    f"used project metadata for {missing_version}"
+                )
+                evidence.append(
+                    "Used project-level metadata after version-specific metadata failed"
+                )
+        except MetadataFetchError as exc:
             if self.settings.strict:
                 raise
             warnings.append(f"Could not fetch metadata from {adapter.metadata_source}")
-            return self._empty_result(parsed, warnings, evidence, metadata_sources)
+            fallback_metadata = adapter.metadata_fetch_fallback(parsed)
+            if fallback_metadata is None and self.settings.no_network:
+                return self._empty_result(parsed, warnings, evidence, metadata_sources)
+            metadata = fallback_metadata or {}
+            if fallback_metadata is not None:
+                evidence.append(
+                    f"Used resolver-local fallback metadata after {adapter.metadata_source} failed"
+                )
+            warnings.append(f"Continuing after metadata fetch failure: {exc}")
 
         candidates = self._validate_repository_candidates(
             score_candidates(adapter.extract_candidates(parsed, metadata), parsed),
@@ -109,6 +130,24 @@ class ResolutionEngine:
             evidence,
         )
         structured_confidence = confidence_from_score(candidates[0].score if candidates else 0.0)
+        if structured_confidence == "none" and not self.settings.no_network:
+            deps_candidates, deps_evidence, deps_warnings = fetch_deps_dev_candidates(
+                parsed,
+                self.client,
+            )
+            evidence.extend(deps_evidence)
+            warnings.extend(deps_warnings)
+            if deps_evidence:
+                metadata_sources.append("deps-dev")
+            if deps_candidates:
+                candidates = self._validate_repository_candidates(
+                    score_candidates([*candidates, *deps_candidates], parsed),
+                    warnings,
+                    evidence,
+                )
+                structured_confidence = confidence_from_score(
+                    candidates[0].score if candidates else 0.0
+                )
         if structured_confidence == "none" and should_scrape_purl(parsed):
             scrape_pages = [
                 *adapter.fallback_scrape_pages(parsed, metadata),
@@ -346,13 +385,17 @@ class ResolutionEngine:
         )
 
     def _resolve_mlflow(self, parsed: ParsedPurl, *, include_release: bool) -> ResolutionResult:
-        registry_url = parsed.qualifiers.get("registry_url") or parsed.qualifiers.get(
-            "tracking_uri"
+        registry_url = (
+            parsed.qualifiers.get("registry_url")
+            or parsed.qualifiers.get("tracking_uri")
+            or parsed.qualifiers.get("repository_url")
         )
         evidence = ["Evaluated MLflow purl as artifact hub reference"]
         warnings: list[str] = []
         if not registry_url:
-            warnings.append("MLflow purl requires a registry_url or tracking_uri qualifier")
+            warnings.append(
+                "MLflow purl requires a registry_url, tracking_uri, or repository_url qualifier"
+            )
             if self.settings.strict:
                 raise NoRepositoryFoundError(f"No MLflow registry URL found for {parsed.raw}")
             return self._empty_result(parsed, warnings, evidence, ["mlflow-purl"])
@@ -421,9 +464,12 @@ class ResolutionEngine:
             return self._empty_result(parsed, warnings, evidence, ["generic-purl-qualifiers"])
 
         source_url = parsed.qualifiers[selected_key]
-        normalized = source_url.rstrip("/")
+        repository_source_url = (
+            _strip_vcs_revision(source_url) if selected_key == "vcs_url" else source_url
+        )
+        normalized = repository_source_url.rstrip("/")
         if selected_key != "download_url":
-            normalized = normalize_repo_url(source_url) or normalized
+            normalized = normalize_repo_url(repository_source_url) or normalized
 
         host = url_host(normalized)
         platform = classify_host(host) if host else "generic"
@@ -521,6 +567,22 @@ class ResolutionEngine:
         host_adapter = self._host_adapter(candidate.host)
         if host_adapter is None:
             return None
+        if self.settings.verify_release_links:
+            try:
+                for release_candidate in host_adapter.candidate_release_links(
+                    candidate.normalized_url,
+                    parsed.version,
+                ):
+                    if self.client.url_exists(release_candidate.url):
+                        evidence.append(evidence_messages.verified_release())
+                        return release_candidate
+            except MetadataFetchError:
+                if self.settings.strict:
+                    raise
+                warnings.append("Could not verify inferred release links")
+                return None
+            warnings.append(evidence_messages.unverified_release_warning())
+            return None
         return host_adapter.infer_release_link(candidate.normalized_url, parsed.version)
 
     def _direct_result(
@@ -615,6 +677,17 @@ def _repository_kind_for_candidate(candidate: RepositoryCandidate) -> str:
     if candidate.repository_type in {"github", "gitlab", "bitbucket", "generic_git"}:
         return "source_code"
     return "generic"
+
+
+def _strip_vcs_revision(url: str) -> str:
+    coerced = coerce_git_url(url)
+    parsed = urlsplit(coerced)
+    if parsed.scheme not in {"http", "https", "ssh"} or "@" not in parsed.path:
+        return url
+    path, revision = parsed.path.rsplit("@", 1)
+    if "/" not in path or not revision:
+        return url
+    return urlunsplit((parsed.scheme, parsed.netloc, path, parsed.query, parsed.fragment))
 
 
 def _repository_ref_from_candidate(
