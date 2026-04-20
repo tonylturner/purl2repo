@@ -27,6 +27,8 @@ def test_resolve_pypi_with_fixture(fake_http_factory):
     assert result.release_link.url.endswith("/releases/tag/v2.31.0")
     assert result.confidence == "high"
     assert result.metadata_sources == ["pypi-json"]
+    assert result.repository_validated is True
+    assert result.repository_validation_status == "validated"
 
 
 def test_verify_release_links_selects_existing_candidate(fake_http_factory):
@@ -137,6 +139,30 @@ def test_resolve_many_reuses_resolver(fake_http_factory):
 
     assert len(results) == 1
     assert results[0].repository_url == "https://github.com/psf/requests"
+
+
+def test_resolve_many_parallel_preserves_order():
+    purls = [
+        "pkg:github/package-url/purl-spec",
+        "pkg:github/psf/requests",
+        "pkg:bitbucket/snakeyaml/snakeyaml",
+    ]
+
+    with Resolver(no_network=True) as resolver:
+        results = list(resolver.resolve_many(purls, max_workers=2))
+
+    assert [result.purl.raw for result in results] == purls
+    assert [result.repository_url for result in results] == [
+        "https://github.com/package-url/purl-spec",
+        "https://github.com/psf/requests",
+        "https://bitbucket.org/snakeyaml/snakeyaml",
+    ]
+    assert all(result.repository_validation_status == "skipped" for result in results)
+
+
+def test_resolve_many_rejects_invalid_worker_count():
+    with Resolver(no_network=True) as resolver, pytest.raises(ValueError):
+        list(resolver.resolve_many(["pkg:github/package-url/purl-spec"], max_workers=0))
 
 
 def test_no_network_returns_warning_without_strict():

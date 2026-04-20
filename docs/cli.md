@@ -43,7 +43,9 @@ desired.
 
 Human output includes `Repository`, `Kind`, `Type`, optional `Version`, release
 or revision URL, confidence, evidence, and warnings. JSON output includes the
-full `canonical_repository` object and `version_reference` object.
+full `canonical_repository` object, `version_reference` object, and explicit
+repository validation fields: `repository_validated` and
+`repository_validation_status`.
 
 Example artifact-hub output:
 

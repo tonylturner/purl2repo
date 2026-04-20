@@ -26,7 +26,18 @@ result = resolver.resolve("pkg:pypi/requests@2.31.0")
 resolver.close()
 ```
 
-`Resolver.resolve_many(iterable)` reuses the HTTP client and cache.
+`Resolver.resolve_many(iterable)` resolves PURLs in input order using the
+configured resolver. Pass `max_workers=N` to use a bounded worker pool for
+independent PURL resolutions:
+
+```python
+with Resolver(validate_repositories=False) as resolver:
+    results = list(resolver.resolve_many(purls, max_workers=8))
+```
+
+Parallel workers create short-lived resolver engines so each worker owns its HTTP
+client. Use this for bulk package lists when network latency dominates. Keep
+`max_workers` conservative for public registries.
 
 Set `verify_release_links=True` to require a cached host check before returning
 an inferred release link:
@@ -58,6 +69,11 @@ It includes `url`, `kind`, `platform`, `host`, `namespace`, `name`,
 `is_canonical`, `confidence`, and `reasons`. `repository_url`,
 `repository_type`, and `repository_kind` are convenience fields for callers that
 do not need the full nested object.
+
+`ResolutionResult.repository_validated` is `True` only when the selected
+repository URL was checked successfully. `repository_validation_status` is one of
+`validated`, `skipped`, `inconclusive`, `failed`, `unknown`, or
+`not_applicable`.
 
 `ResolutionResult.version_reference` mirrors `release_link` and may represent a
 release, tag, source tree, package page, revision, or registry version depending

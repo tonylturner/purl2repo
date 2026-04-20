@@ -37,8 +37,8 @@
    conservative version reference.
    When `verify_release_links=True`, candidate release, tag, and source URLs are
    checked with cached host requests before one is returned.
-14. Return a `ResolutionResult` with `canonical_repository`, evidence, warnings,
-   metadata sources, and all candidates.
+14. Return a `ResolutionResult` with `canonical_repository`, repository
+   validation status, evidence, warnings, metadata sources, and all candidates.
 
 Adapters are intentionally narrow. Adding an ecosystem should not require
 changing parser, scoring, CLI, or serialization code beyond adapter registration
@@ -69,6 +69,13 @@ deterministic result and leaves validation to the caller.
 If validation is inconclusive because a host errors during lookup, the candidate
 is retained with a lower score so stale metadata can remain inspectable without
 being reported as high confidence.
+The selected result records this explicitly through `repository_validated` and
+`repository_validation_status` so callers do not need to parse evidence strings.
 Bulk callers can also disable repository validation, deps.dev fallback, and
 scraper fallback through resolver settings. Those switches skip expensive stages
 but do not change the default quality-first behavior.
+
+`Resolver.resolve_many(..., max_workers=N)` provides a bounded worker pool for
+independent PURL resolution. It preserves input order and keeps the package API
+focused on generic PURL batches; SBOM traversal and SBOM-specific output shaping
+belong in caller tools such as `sbom2repo`.

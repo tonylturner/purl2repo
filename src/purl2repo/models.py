@@ -91,6 +91,8 @@ class ResolutionResult:
     evidence: list[str]
     warnings: list[str]
     metadata_sources: list[str]
+    repository_validated: bool = False
+    repository_validation_status: str = "unknown"
 
     def to_dict(self) -> JsonDict:
         return {
@@ -108,6 +110,8 @@ class ResolutionResult:
             "version_reference": (
                 self.version_reference.to_dict() if self.version_reference else None
             ),
+            "repository_validated": self.repository_validated,
+            "repository_validation_status": self.repository_validation_status,
             "confidence": self.confidence,
             "evidence": list(self.evidence),
             "warnings": list(self.warnings),

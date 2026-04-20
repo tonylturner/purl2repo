@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/tonylturner/purl2repo/actions/workflows/ci.yml/badge.svg)](https://github.com/tonylturner/purl2repo/actions/workflows/ci.yml)
 [![Integration](https://github.com/tonylturner/purl2repo/actions/workflows/integration.yml/badge.svg?branch=main)](https://github.com/tonylturner/purl2repo/actions/workflows/integration.yml)
-[![Release](https://img.shields.io/badge/release-v2.0.1-blue.svg)](https://github.com/tonylturner/purl2repo/blob/main/docs/releases/v2.0.1.md)
+[![Release](https://img.shields.io/badge/release-v2.0.2-blue.svg)](https://github.com/tonylturner/purl2repo/blob/main/docs/releases/v2.0.2.md)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://github.com/tonylturner/purl2repo/blob/main/pyproject.toml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/tonylturner/purl2repo/blob/main/LICENSE)
 [![Typed](https://img.shields.io/badge/typed-py.typed-blue.svg)](https://typing.python.org/en/latest/spec/distributing.html)
@@ -84,6 +84,16 @@ with Resolver(timeout=15.0, use_cache=True) as resolver:
             ]
         )
     )
+
+    parallel_results = list(
+        resolver.resolve_many(
+            [
+                "pkg:pypi/requests@2.31.0",
+                "pkg:npm/react@18.2.0",
+            ],
+            max_workers=4,
+        )
+    )
 ```
 
 ## CLI
@@ -120,6 +130,8 @@ The main fields are:
 - `repository_kind`: `source_code`, `artifact_hub`, `vcs`, `generic`, or related
   repository class.
 - `version_reference`: verified or inferred version-specific link when available.
+- `repository_validated` and `repository_validation_status`: whether the
+  selected repository URL was checked, skipped, inconclusive, or not applicable.
 - `confidence`, `evidence`, `warnings`, and `repository_candidates`.
 
 See [docs/api.md](https://github.com/tonylturner/purl2repo/blob/main/docs/api.md),

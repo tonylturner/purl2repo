@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "purl2repo"
-version = "2.0.1"
+version = "2.0.2"
 description = "Resolve Package URLs to canonical source, VCS, registry, and artifact hub repositories."
 readme = "README.md"
 requires-python = ">=3.11"

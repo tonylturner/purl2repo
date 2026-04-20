@@ -151,5 +151,10 @@ class Resolver:
     def resolve_release(self, purl: str) -> ResolutionResult:
         return self._engine.resolve_release(purl)
 
-    def resolve_many(self, iterable_of_purls: Iterable[str]) -> Iterator[ResolutionResult]:
-        return self._engine.resolve_many(iterable_of_purls)
+    def resolve_many(
+        self,
+        iterable_of_purls: Iterable[str],
+        *,
+        max_workers: int | None = None,
+    ) -> Iterator[ResolutionResult]:
+        return self._engine.resolve_many(iterable_of_purls, max_workers=max_workers)

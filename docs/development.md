@@ -23,7 +23,7 @@ release:
 .venv/bin/twine check dist/*
 tmpdir="$(mktemp -d)"
 python3.11 -m venv "$tmpdir/venv"
-"$tmpdir/venv/bin/python" -m pip install dist/purl2repo-2.0.1-py3-none-any.whl
+"$tmpdir/venv/bin/python" -m pip install dist/purl2repo-2.0.2-py3-none-any.whl
 "$tmpdir/venv/bin/purl2repo" parse pkg:pypi/requests
 ```
 

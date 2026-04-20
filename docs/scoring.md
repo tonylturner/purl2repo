@@ -48,6 +48,10 @@ missing so a 404 cannot become the canonical repository.
 If validation is inconclusive because a remote host fails during lookup, the
 candidate may remain visible, but its score is capped below medium confidence so
 network errors and stale hosts do not produce high-confidence answers.
+The final result includes `repository_validated` and
+`repository_validation_status` so automation can distinguish verified,
+validation-skipped, and inconclusive repository URLs without parsing warning
+text.
 
 Structured metadata wins over deps.dev and scraping because registry APIs and
 POM fields are first-party, auditable, and deterministic. deps.dev is useful as

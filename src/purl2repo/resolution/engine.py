@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from urllib.parse import urlsplit, urlunsplit
 
@@ -229,9 +230,14 @@ class ResolutionEngine:
                 warnings.append(evidence_messages.skipped_release_no_version())
                 evidence.append(evidence_messages.skipped_release_no_version())
 
+        repository_url = best.normalized_url if best and confidence != "none" else None
+        repository_validation_status = self._repository_validation_status(
+            repository_url, warnings, evidence
+        )
+
         return ResolutionResult(
             purl=parsed,
-            repository_url=best.normalized_url if best and confidence != "none" else None,
+            repository_url=repository_url,
             repository_type=best.repository_type if best and confidence != "none" else None,
             repository_kind=(
                 _repository_kind_for_candidate(best) if best and confidence != "none" else None
@@ -244,6 +250,8 @@ class ResolutionEngine:
             ),
             release_link=release_link,
             version_reference=release_link,
+            repository_validated=repository_validation_status == "validated",
+            repository_validation_status=repository_validation_status,
             confidence=confidence,
             evidence=evidence,
             warnings=warnings,
@@ -259,9 +267,28 @@ class ResolutionEngine:
             raise NoReleaseFoundError(f"No release link found for {purl}")
         return result
 
-    def resolve_many(self, purls: Iterable[str]) -> Iterator[ResolutionResult]:
-        for purl in purls:
-            yield self.resolve(purl)
+    def resolve_many(
+        self,
+        purls: Iterable[str],
+        *,
+        max_workers: int | None = None,
+    ) -> Iterator[ResolutionResult]:
+        if max_workers is not None and max_workers < 1:
+            raise ValueError("max_workers must be greater than zero")
+        if max_workers is None or max_workers == 1:
+            for purl in purls:
+                yield self.resolve(purl)
+            return
+
+        def resolve_one(purl: str) -> ResolutionResult:
+            engine = ResolutionEngine(self.settings)
+            try:
+                return engine.resolve(purl)
+            finally:
+                engine.close()
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            yield from executor.map(resolve_one, purls)
 
     def _adapter_for(self, parsed: ParsedPurl) -> EcosystemResolver:
         adapter_cls = ECOSYSTEMS.get(parsed.type)
@@ -613,6 +640,10 @@ class ResolutionEngine:
             if self.settings.strict:
                 raise NoRepositoryFoundError(f"Repository URL did not validate: {repository.url}")
             return self._empty_result(parsed, warnings, evidence, metadata_sources)
+        repository_validation_status = self._repository_validation_status(
+            repository.url, warnings, evidence
+        )
+
         return ResolutionResult(
             purl=parsed,
             repository_url=repository.url,
@@ -622,6 +653,8 @@ class ResolutionEngine:
             canonical_repository=repository,
             release_link=release_link,
             version_reference=release_link,
+            repository_validated=repository_validation_status == "validated",
+            repository_validation_status=repository_validation_status,
             confidence=confidence,
             evidence=evidence,
             warnings=warnings,
@@ -700,6 +733,27 @@ class ResolutionEngine:
         warnings.append(f"Repository URL did not validate and was discarded: {url}")
         return False
 
+    def _repository_validation_status(
+        self,
+        repository_url: str | None,
+        warnings: list[str],
+        evidence: list[str],
+    ) -> str:
+        if repository_url is None:
+            return "not_applicable"
+        if self.settings.no_network or not self.settings.validate_repositories:
+            return "skipped"
+        if f"Validated repository URL: {repository_url}" in evidence:
+            return "validated"
+        if any(f"Could not validate repository URL: {repository_url}" in item for item in warnings):
+            return "inconclusive"
+        if any(
+            "Repository URL did not validate and was discarded" in item and repository_url in item
+            for item in warnings
+        ):
+            return "failed"
+        return "unknown"
+
     def _empty_result(
         self,
         parsed: ParsedPurl,
@@ -716,6 +770,8 @@ class ResolutionEngine:
             canonical_repository=None,
             release_link=None,
             version_reference=None,
+            repository_validated=False,
+            repository_validation_status="not_applicable",
             confidence="none",
             evidence=evidence,
             warnings=warnings,

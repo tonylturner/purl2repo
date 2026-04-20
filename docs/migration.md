@@ -22,6 +22,8 @@ The old `github_repo` and `vcs_repo` style fields are replaced by:
 - `repository_url`: convenience URL for the canonical repository
 - `repository_type`: platform or host classification
 - `repository_kind`: source code, artifact hub, VCS, generic, or related kind
+- `repository_validated`: whether the selected repository URL was verified
+- `repository_validation_status`: validation state for the selected repository
 
 Use `canonical_repository` for new integrations. Use `repository_url` only when a
 single URL string is enough.
@@ -36,7 +38,8 @@ a release, tag, source tree, package page, revision, or registry version.
 
 When network is available, v2 validates resolved repository URLs before selecting
 the canonical repository. Candidates that verify as missing are discarded. In
-`no_network=True`, validation is skipped.
+`no_network=True`, validation is skipped. New code should read
+`repository_validation_status` instead of parsing evidence or warning strings.
 
 ## CLI
 

@@ -5,10 +5,19 @@ Keep a Changelog and the project uses Semantic Versioning.
 
 ## [Unreleased]
 
+No unreleased changes yet.
+
+## [2.0.2] - 2026-04-20
+
 ### Added
 
 - Resolver settings and CLI flags can now disable repository URL validation,
   deps.dev fallback, and scraper fallback for faster bulk inventory workflows.
+- `ResolutionResult` now exposes `repository_validated` and
+  `repository_validation_status` so callers can read validation state without
+  parsing evidence or warning strings.
+- `Resolver.resolve_many(..., max_workers=N)` can use a bounded worker pool for
+  independent PURL resolution while preserving input order.
 
 ### Changed
 

@@ -27,7 +27,7 @@
 .venv/bin/twine check dist/*
 tmpdir="$(mktemp -d)"
 python3.11 -m venv "$tmpdir/venv"
-"$tmpdir/venv/bin/python" -m pip install dist/purl2repo-2.0.1-py3-none-any.whl
+"$tmpdir/venv/bin/python" -m pip install dist/purl2repo-2.0.2-py3-none-any.whl
 "$tmpdir/venv/bin/purl2repo" version
 ```
 
@@ -36,6 +36,22 @@ python3.11 -m venv "$tmpdir/venv"
 Publishing is handled by GitHub Actions and should use Trusted Publishing.
 Use the TestPyPI workflow for release candidates and the PyPI workflow for final
 GitHub releases.
+
+## v2.0.2 Release
+
+The v2.0.2 release notes are in [docs/releases/v2.0.2.md](releases/v2.0.2.md).
+
+Create the final release only after CI, integration checks, Trivy, and package
+build verification are green:
+
+```bash
+gh release create v2.0.2 \
+  --title "purl2repo v2.0.2" \
+  --notes-file docs/releases/v2.0.2.md \
+  --target main \
+  dist/purl2repo-2.0.2.tar.gz \
+  dist/purl2repo-2.0.2-py3-none-any.whl
+```
 
 ## v2.0.1 Release
 
